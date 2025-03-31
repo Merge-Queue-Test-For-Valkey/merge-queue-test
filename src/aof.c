@@ -1010,7 +1010,7 @@ int startAppendOnly(void) {
 int tryRestartAOFAfterSYNCWithRdb(void) {
     serverAssert(server.aof_state == AOF_OFF);
 
-    int newfd = -1;
+    int newfd = -1, rdbfile_renamed = 0;
     sds new_base_filename = NULL;
     sds new_base_filepath = NULL;
     sds new_incr_filename = NULL;
@@ -1024,7 +1024,6 @@ int tryRestartAOFAfterSYNCWithRdb(void) {
     }
 
     serverAssert(server.aof_manifest != NULL);
-
     /* Create a temporary copy of the manifest for modifications */
     temp_am = aofManifestDup(server.aof_manifest);
 
@@ -1032,14 +1031,13 @@ int tryRestartAOFAfterSYNCWithRdb(void) {
     new_base_filename = getNewBaseFileNameAndMarkPreAsHistory(temp_am, server.aof_use_rdb_preamble);
     serverAssert(new_base_filename != NULL);
     new_base_filepath = makePath(server.aof_dirname, new_base_filename);
-
     /* Rename the RDB file to be the new base AOF file */
     if (rename(server.rdb_filename, new_base_filepath) == -1) {
         serverLog(LL_WARNING, "Error trying to rename the RDB file %s into %s: %s", server.rdb_filename,
                   new_base_filepath, strerror(errno));
         goto cleanup;
     }
-    sdsfree(new_base_filepath);
+    rdbfile_renamed = 1;
 
     /* Create a new incr AOF file */
     new_incr_filename = getNewIncrAofName(temp_am);
@@ -1057,7 +1055,6 @@ int tryRestartAOFAfterSYNCWithRdb(void) {
 
     /* Persist AOF Manifest. */
     if (persistAofManifest(temp_am) == C_ERR) {
-        serverLog(LL_WARNING, "Can't open the append-only file %s: %s", new_incr_filename, strerror(errno));
         goto cleanup;
     }
 
@@ -1065,6 +1062,8 @@ int tryRestartAOFAfterSYNCWithRdb(void) {
     aofManifestFreeAndUpdate(temp_am);
 
     aofDelHistoryFiles();
+
+    sdsfree(new_base_filepath);
 
     /* Set the initial repl_offset, which will be applied to fsynced_reploff */
     atomic_store_explicit(&server.fsynced_reploff_pending, server.primary_repl_offset, memory_order_relaxed);
@@ -1102,6 +1101,16 @@ int tryRestartAOFAfterSYNCWithRdb(void) {
     return C_OK;
 
 cleanup:
+    if (server.rdb_del_sync_files && allPersistenceDisabled()) {
+        serverLog(LL_NOTICE, "Removing the RDB file obtained from "
+                             "the primary. This replica has persistence "
+                             "disabled");
+        if (rdbfile_renamed) {
+            bg_unlink(new_base_filepath);
+        } else {
+            bg_unlink(server.rdb_filename);
+        }
+    }
     if (temp_am) aofManifestFree(temp_am);
     if (new_base_filename) sdsfree(new_base_filename);
     if (new_base_filepath) sdsfree(new_base_filepath);
