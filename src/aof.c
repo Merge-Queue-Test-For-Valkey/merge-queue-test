@@ -1063,6 +1063,7 @@ int RestartAOFWithSyncFile(void) {
 
     aofDelHistoryFiles();
 
+    /* Now, it will not goto clean up, then we can safely free new_base_filepath */
     sdsfree(new_base_filepath);
 
     /* Set the initial repl_offset, which will be applied to fsynced_reploff */
