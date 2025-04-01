@@ -2984,7 +2984,7 @@ int rewriteAppendOnlyFileBackground(void);
 int loadAppendOnlyFiles(aofManifest *am);
 void stopAppendOnly(void);
 int startAppendOnly(void);
-int tryRestartAOFAfterSYNCWithRdb(void);
+int RestartAOFWithSyncFile(void);
 void backgroundRewriteDoneHandler(int exitcode, int bysignal);
 void killAppendOnlyChild(void);
 void restartAOFAfterSYNC(void);

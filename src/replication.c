@@ -2524,7 +2524,7 @@ void readSyncBulkPayload(connection *conn) {
     /* Restart the AOF subsystem now that we finished the sync. This
      * will trigger an AOF rewrite, and when done will start appending
      * to the new file. */
-    if (!use_diskless_load && server.aof_enabled && server.aof_use_rdb_preamble) tryRestartAOFAfterSYNCWithRdb();
+    if (!use_diskless_load && server.aof_enabled && server.aof_use_rdb_preamble) RestartAOFWithSyncFile();
 
     if (server.aof_enabled && server.aof_state == AOF_OFF) restartAOFAfterSYNC();
 

@@ -1007,7 +1007,7 @@ int startAppendOnly(void) {
 
 /* try to Restart AOF after a successful primary-replica full SYNC with
  * existing RDB file. */
-int tryRestartAOFAfterSYNCWithRdb(void) {
+int RestartAOFWithSyncFile(void) {
     serverAssert(server.aof_state == AOF_OFF);
 
     int newfd = -1, rdbfile_renamed = 0;
@@ -1112,9 +1112,7 @@ cleanup:
         }
     }
     if (temp_am) aofManifestFree(temp_am);
-    if (new_base_filename) sdsfree(new_base_filename);
     if (new_base_filepath) sdsfree(new_base_filepath);
-    if (new_incr_filename) sdsfree(new_incr_filename);
     if (new_incr_filepath) sdsfree(new_incr_filepath);
     if (newfd != -1) close(newfd);
     return C_ERR;
