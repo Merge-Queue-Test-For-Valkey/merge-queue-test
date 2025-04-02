@@ -1043,7 +1043,6 @@ int RestartAOFWithSyncFile(void) {
     new_incr_filename = getNewIncrAofName(temp_am);
     new_incr_filepath = makePath(server.aof_dirname, new_incr_filename);
     newfd = open(new_incr_filepath, O_WRONLY | O_TRUNC | O_CREAT, 0644);
-    sdsfree(new_incr_filepath);
     if (newfd == -1) {
         serverLog(LL_WARNING, "Can't open the append-only file %s: %s", new_incr_filename, strerror(errno));
         goto cleanup;
@@ -1065,6 +1064,7 @@ int RestartAOFWithSyncFile(void) {
 
     /* Now, it will not goto clean up, then we can safely free new_base_filepath */
     sdsfree(new_base_filepath);
+    sdsfree(new_incr_filepath);
 
     /* Set the initial repl_offset, which will be applied to fsynced_reploff */
     atomic_store_explicit(&server.fsynced_reploff_pending, server.primary_repl_offset, memory_order_relaxed);
