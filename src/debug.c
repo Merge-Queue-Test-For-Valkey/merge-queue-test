@@ -38,6 +38,7 @@
 #include "threads_mngr.h"
 #include "io_threads.h"
 #include "sds.h"
+#include "module.h"
 
 #include <arpa/inet.h>
 #include <signal.h>
@@ -205,20 +206,20 @@ void xorObjectDigest(serverDb *db, robj *keyobj, unsigned char *digest, robj *o)
             }
         } else if (o->encoding == OBJ_ENCODING_SKIPLIST) {
             zset *zs = o->ptr;
-            dictIterator *di = dictGetIterator(zs->dict);
-            dictEntry *de;
+            hashtableIterator iter;
+            hashtableInitIterator(&iter, zs->ht, 0);
 
-            while ((de = dictNext(di)) != NULL) {
-                sds sdsele = dictGetKey(de);
-                double *score = dictGetVal(de);
-                const int len = fpconv_dtoa(*score, buf);
+            void *next;
+            while (hashtableNext(&iter, &next)) {
+                zskiplistNode *node = next;
+                const int len = fpconv_dtoa(node->score, buf);
                 buf[len] = '\0';
                 memset(eledigest, 0, 20);
-                mixDigest(eledigest, sdsele, sdslen(sdsele));
+                mixDigest(eledigest, node->ele, sdslen(node->ele));
                 mixDigest(eledigest, buf, strlen(buf));
                 xorDigest(digest, eledigest, 20);
             }
-            dictReleaseIterator(di);
+            hashtableResetIterator(&iter);
         } else {
             serverPanic("Unknown sorted set encoding");
         }
@@ -230,7 +231,7 @@ void xorObjectDigest(serverDb *db, robj *keyobj, unsigned char *digest, robj *o)
             sds sdsele;
 
             memset(eledigest, 0, 20);
-            sdsele = hashTypeCurrentObjectNewSds(&hi, OBJ_HASH_KEY);
+            sdsele = hashTypeCurrentObjectNewSds(&hi, OBJ_HASH_FIELD);
             mixDigest(eledigest, sdsele, sdslen(sdsele));
             sdsfree(sdsele);
             sdsele = hashTypeCurrentObjectNewSds(&hi, OBJ_HASH_VALUE);
@@ -263,7 +264,7 @@ void xorObjectDigest(serverDb *db, robj *keyobj, unsigned char *digest, robj *o)
         ValkeyModuleDigest md = {{0}, {0}, keyobj, db->id};
         moduleValue *mv = o->ptr;
         moduleType *mt = mv->type;
-        moduleInitDigestContext(md);
+        moduleInitDigestContext(&md);
         if (mt->digest) {
             mt->digest(&md, mv->value);
             xorDigest(digest, md.x, sizeof(md.x));
@@ -283,23 +284,23 @@ void xorObjectDigest(serverDb *db, robj *keyobj, unsigned char *digest, robj *o)
  * a different digest. */
 void computeDatasetDigest(unsigned char *final) {
     unsigned char digest[20];
-    robj *o;
-    int j;
     uint32_t aux;
 
     memset(final, 0, 20); /* Start with a clean result */
 
-    for (j = 0; j < server.dbnum; j++) {
+    for (int j = 0; j < server.dbnum; j++) {
         serverDb *db = server.db + j;
         if (kvstoreSize(db->keys) == 0) continue;
-        kvstoreIterator *kvs_it = kvstoreIteratorInit(db->keys);
+        kvstoreIterator *kvs_it = kvstoreIteratorInit(db->keys, HASHTABLE_ITER_SAFE | HASHTABLE_ITER_PREFETCH_VALUES);
 
         /* hash the DB id, so the same dataset moved in a different DB will lead to a different digest */
         aux = htonl(j);
         mixDigest(final, &aux, sizeof(aux));
 
         /* Iterate this DB writing every entry */
-        while (kvstoreIteratorNext(kvs_it, (void **)&o)) {
+        void *next;
+        while (kvstoreIteratorNext(kvs_it, &next)) {
+            robj *o = next;
             sds key;
             robj *keyobj;
 
@@ -683,12 +684,16 @@ void debugCommand(client *c) {
         if (val->type != OBJ_STRING || !sdsEncodedObject(val)) {
             addReplyError(c, "Not an sds encoded string.");
         } else {
+            /* Report the complete robj allocation size as the key's allocation
+             * size. Report 0 as allocation size for embedded values. */
+            size_t obj_alloc = zmalloc_usable_size(val);
+            size_t val_alloc = val->encoding == OBJ_ENCODING_RAW ? sdsAllocSize(val->ptr) : 0;
             addReplyStatusFormat(c,
-                                 "key_sds_len:%lld, key_sds_avail:%lld, key_zmalloc: %lld, "
-                                 "val_sds_len:%lld, val_sds_avail:%lld, val_zmalloc: %lld",
-                                 (long long)sdslen(key), (long long)sdsavail(key), (long long)sdsAllocSize(key),
+                                 "key_sds_len:%lld key_sds_avail:%lld obj_alloc:%lld "
+                                 "val_sds_len:%lld val_sds_avail:%lld val_alloc:%lld",
+                                 (long long)sdslen(key), (long long)sdsavail(key), (long long)obj_alloc,
                                  (long long)sdslen(val->ptr), (long long)sdsavail(val->ptr),
-                                 (long long)getStringObjectSdsUsedMemory(val));
+                                 (long long)val_alloc);
         }
     } else if (!strcasecmp(c->argv[1]->ptr, "listpack") && c->argc == 3) {
         robj *o;
@@ -922,23 +927,17 @@ void debugCommand(client *c) {
         robj *o = objectCommandLookupOrReply(c, c->argv[2], shared.nokeyerr);
         if (o == NULL) return;
 
-        /* Get the dict reference from the object, if possible. */
-        dict *d = NULL;
+        /* Get the hashtable reference from the object, if possible. */
         hashtable *ht = NULL;
         switch (o->encoding) {
         case OBJ_ENCODING_SKIPLIST: {
             zset *zs = o->ptr;
-            d = zs->dict;
+            ht = zs->ht;
         } break;
-        case OBJ_ENCODING_HT: d = o->ptr; break;
         case OBJ_ENCODING_HASHTABLE: ht = o->ptr; break;
         }
 
-        if (d != NULL) {
-            char buf[4096];
-            dictGetStats(buf, sizeof(buf), d, full);
-            addReplyVerbatim(c, buf, strlen(buf), "txt");
-        } else if (ht != NULL) {
+        if (ht != NULL) {
             char buf[4096];
             hashtableGetStats(buf, sizeof(buf), ht, full);
             addReplyVerbatim(c, buf, strlen(buf), "txt");

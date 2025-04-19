@@ -27,7 +27,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+/*
+ * Copyright (c) Valkey Contributors
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 #include "fmacros.h"
 
 #include <stdio.h>
@@ -218,6 +222,8 @@ static struct config {
     int shutdown;
     int monitor_mode;
     int pubsub_mode;
+    int pubsub_unsharded_count; /* channels and patterns */
+    int pubsub_sharded_count;   /* shard channels */
     int blocking_state_aborted; /* used to abort monitor_mode and pubsub_mode. */
     int latency_mode;
     int latency_dist_mode;
@@ -1608,25 +1614,30 @@ static int cliSwitchProto(void) {
     return result;
 }
 
+static void resetConfig(void) {
+    config.dbnum = 0;
+    config.in_multi = 0;
+    config.pubsub_mode = 0;
+}
+
 /* Connect to the server. It is possible to pass certain flags to the function:
  *      CC_FORCE: The connection is performed even if there is already
  *                a connected socket.
  *      CC_QUIET: Don't print errors if connection fails. */
 static int cliConnect(int flags) {
     if (context == NULL || flags & CC_FORCE) {
+        resetConfig();
         if (context != NULL) {
             redisFree(context);
-            config.dbnum = 0;
-            config.in_multi = 0;
-            config.pubsub_mode = 0;
+            resetConfig();
             cliRefreshPrompt();
         }
 
         /* Do not use hostsocket when we got redirected in cluster mode */
         if (config.hostsocket == NULL || (config.cluster_mode && config.cluster_reissue_command)) {
-            context = redisConnectWrapper(config.conn_info.hostip, config.conn_info.hostport, config.connect_timeout);
+            context = redisConnectWrapper(config.conn_info.hostip, config.conn_info.hostport, config.connect_timeout, 0);
         } else {
-            context = redisConnectUnixWrapper(config.hostsocket, config.connect_timeout);
+            context = redisConnectUnixWrapper(config.hostsocket, config.connect_timeout, 0);
         }
 
         if (!context->err && config.tls) {
@@ -2040,6 +2051,8 @@ static sds jsonStringOutput(sds out, const char *p, int len, int mode) {
     } else {
         assert(0);
     }
+    /* Silence compiler warning */
+    return NULL;
 }
 
 static sds cliFormatReplyJson(sds out, redisReply *r, int mode) {
@@ -2227,6 +2240,28 @@ static int cliReadReply(int output_raw_strings) {
     return REDIS_OK;
 }
 
+/* Helper method to handle pubsub subscription/unsubscription. */
+static void handlePubSubMode(redisReply *reply) {
+    char *cmd = reply->element[0]->str;
+    int count = reply->element[2]->integer;
+
+    /* Update counts based on the command type */
+    if (strcmp(cmd, "subscribe") == 0 || strcmp(cmd, "psubscribe") == 0 || strcmp(cmd, "unsubscribe") == 0 || strcmp(cmd, "punsubscribe") == 0) {
+        config.pubsub_unsharded_count = count;
+    } else if (strcmp(cmd, "ssubscribe") == 0 || strcmp(cmd, "sunsubscribe") == 0) {
+        config.pubsub_sharded_count = count;
+    }
+
+    /* Update pubsub mode based on the current counts */
+    if (config.pubsub_unsharded_count + config.pubsub_sharded_count == 0 && config.pubsub_mode) {
+        config.pubsub_mode = 0;
+        cliRefreshPrompt();
+    } else if (config.pubsub_unsharded_count + config.pubsub_sharded_count > 0 && !config.pubsub_mode) {
+        config.pubsub_mode = 1;
+        cliRefreshPrompt();
+    }
+}
+
 /* Simultaneously wait for pubsub messages from the server and input on stdin. */
 static void cliWaitForMessagesOrStdin(void) {
     int show_info = config.output != OUTPUT_RAW && (isatty(STDOUT_FILENO) || getenv("FAKETTY"));
@@ -2244,7 +2279,13 @@ static void cliWaitForMessagesOrStdin(void) {
                 sds out = cliFormatReply(reply, config.output, 0);
                 fwrite(out, sdslen(out), 1, stdout);
                 fflush(stdout);
+
+                if (isPubsubPush(reply)) {
+                    handlePubSubMode(reply);
+                }
+
                 sdsfree(out);
+                freeReplyObject(reply);
             }
         } while (reply);
 
@@ -2318,6 +2359,9 @@ static int cliSendCommand(int argc, char **argv, long repeat) {
         (argc >= 2 && !strcasecmp(command, "proxy") && !strcasecmp(argv[1], "info"))) {
         output_raw = 1;
     }
+
+    /* In a multi block, commands will return status strings instead of verbatim strings. */
+    if (config.in_multi) output_raw = 0;
 
     if (!strcasecmp(command, "shutdown")) config.shutdown = 1;
     if (!strcasecmp(command, "monitor")) config.monitor_mode = 1;
@@ -2395,13 +2439,11 @@ static int cliSendCommand(int argc, char **argv, long repeat) {
             fflush(stdout);
             if (config.pubsub_mode || num_expected_pubsub_push > 0) {
                 if (isPubsubPush(config.last_reply)) {
+                    handlePubSubMode(config.last_reply);
+
                     if (num_expected_pubsub_push > 0 && !strcasecmp(config.last_reply->element[0]->str, command)) {
                         /* This pushed message confirms the
                          * [p|s][un]subscribe command. */
-                        if (is_subscribe && !config.pubsub_mode) {
-                            config.pubsub_mode = 1;
-                            cliRefreshPrompt();
-                        }
                         if (--num_expected_pubsub_push > 0) {
                             continue; /* We need more of these. */
                         }
@@ -2483,7 +2525,7 @@ static redisReply *reconnectingRedisCommand(redisContext *c, const char *fmt, ..
             fflush(stdout);
 
             redisFree(c);
-            c = redisConnectWrapper(config.conn_info.hostip, config.conn_info.hostport, config.connect_timeout);
+            c = redisConnectWrapper(config.conn_info.hostip, config.conn_info.hostport, config.connect_timeout, 0);
             if (!c->err && config.tls) {
                 const char *err = NULL;
                 if (cliSecureConnection(c, config.sslconfig, &err) == REDIS_ERR && err) {
@@ -2534,7 +2576,7 @@ static int parseOptions(int argc, char **argv) {
             config.stdin_tag_name = argv[++i];
         } else if (!strcmp(argv[i], "-p") && !lastarg) {
             config.conn_info.hostport = atoi(argv[++i]);
-            if (config.conn_info.hostport < 0 || config.conn_info.hostport > 65535) {
+            if ((config.conn_info.hostport == 0 && !(strlen(argv[i]) == 1 && argv[i][0] == '0')) || config.conn_info.hostport < 0 || config.conn_info.hostport > 65535) {
                 fprintf(stderr, "Invalid server port.\n");
                 exit(1);
             }
@@ -2566,7 +2608,7 @@ static int parseOptions(int argc, char **argv) {
         } else if (!strcmp(argv[i], "--user") && !lastarg) {
             config.conn_info.user = sdsnew(argv[++i]);
         } else if (!strcmp(argv[i], "-u") && !lastarg) {
-            parseRedisUri(argv[++i], "valkey-cli", &config.conn_info, &config.tls);
+            parseUri(argv[++i], "valkey-cli", &config.conn_info, &config.tls);
             if (config.conn_info.hostport < 0 || config.conn_info.hostport > 65535) {
                 fprintf(stderr, "Invalid server port.\n");
                 exit(1);
@@ -3115,6 +3157,13 @@ void cliSetPreferences(char **argv, int argc, int interactive) {
         else {
             printf("%sunknown valkey-cli preference '%s'\n", interactive ? "" : ".valkeyclirc: ", argv[1]);
         }
+    } else if (!strcasecmp(argv[0], ":get") && argc >= 2) {
+        if (!strcasecmp(argv[1], "pubsub")) {
+            printf("%d\n", config.pubsub_mode);
+        } else {
+            printf("%sunknown valkey-cli get option '%s'\n", interactive ? "" : ".valkeyclirc: ", argv[1]);
+        }
+        fflush(stdout);
     } else {
         printf("%sunknown valkey-cli internal command '%s'\n", interactive ? "" : ".valkeyclirc: ", argv[0]);
     }
@@ -3907,7 +3956,7 @@ cleanup:
 
 static int clusterManagerNodeConnect(clusterManagerNode *node) {
     if (node->context) redisFree(node->context);
-    node->context = redisConnectWrapper(node->ip, node->port, config.connect_timeout);
+    node->context = redisConnectWrapper(node->ip, node->port, config.connect_timeout, 0);
     if (!node->context->err && config.tls) {
         const char *err = NULL;
         if (cliSecureConnection(node->context, config.sslconfig, &err) == REDIS_ERR && err) {
@@ -7624,7 +7673,7 @@ static int clusterManagerCommandImport(int argc, char **argv) {
     char *reply_err = NULL;
     redisReply *src_reply = NULL;
     // Connect to the source node.
-    redisContext *src_ctx = redisConnectWrapper(src_ip, src_port, config.connect_timeout);
+    redisContext *src_ctx = redisConnectWrapper(src_ip, src_port, config.connect_timeout, 0);
     if (src_ctx->err) {
         success = 0;
         fprintf(stderr, "Could not connect to Valkey at %s:%d: %s.\n", src_ip, src_port, src_ctx->errstr);
@@ -9493,6 +9542,8 @@ int main(int argc, char **argv) {
     config.shutdown = 0;
     config.monitor_mode = 0;
     config.pubsub_mode = 0;
+    config.pubsub_unsharded_count = 0;
+    config.pubsub_sharded_count = 0;
     config.blocking_state_aborted = 0;
     config.latency_mode = 0;
     config.latency_dist_mode = 0;

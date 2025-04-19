@@ -269,7 +269,7 @@ start_server {tags {"info" "external:skip" "debug_defrag:skip"}} {
             r client unblock $rd_id error
             assert_error {UNBLOCKED*} {$rd read}
             assert_match {*count=1*} [errorstat UNBLOCKED]
-            assert_match {*calls=1,*,rejected_calls=0,failed_calls=1} [cmdstat blpop]
+            assert_match {*calls=1,*,rejected_calls=1,failed_calls=0} [cmdstat blpop]
             assert_equal [s total_error_replies] 1
             $rd close
         }
@@ -334,21 +334,21 @@ start_server {tags {"info" "external:skip" "debug_defrag:skip"}} {
 
         test {stats: instantaneous metrics} {
             r config resetstat
-            set retries 0
-            for {set retries 1} {$retries < 4} {incr retries} {
-                after 1600 ;# hz is 10, wait for 16 cron tick so that sample array is fulfilled
-                set value [s instantaneous_eventloop_cycles_per_sec]
-                if {$value > 0} break
-            }
+            r config set hz 100
+            after 2000 ;# Wait for at least 160 cron tick so that sample array is filled
+            set value [s instantaneous_eventloop_cycles_per_sec]
 
-            assert_lessthan $retries 4
             if {$::verbose} { puts "instantaneous metrics instantaneous_eventloop_cycles_per_sec: $value" }
             assert_morethan $value 0
-            assert_lessthan $value [expr $retries*15] ;# default hz is 10
+            # Hz is configured to 100, so we expect a value around 200 since there will be 100 wakeups for
+            # both the server and the clients cron. In practice it will be lower because of imprecision in
+            # kernel wakeups.
+            assert_lessthan $value 200
             set value [s instantaneous_eventloop_duration_usec]
+            r config set hz 10
             if {$::verbose} { puts "instantaneous metrics instantaneous_eventloop_duration_usec: $value" }
             assert_morethan $value 0
-            assert_lessthan $value [expr $retries*22000] ;# default hz is 10, so duration < 1000 / 10, allow some tolerance
+            assert_lessthan $value 22000 ;# Sanity check to make sure the duration is within a couple of ms
         } {} {io-threads:skip} ; # skip with io-threads as the eventloop metrics are different in that case.
         
 
@@ -391,7 +391,13 @@ start_server {tags {"info" "external:skip" "debug_defrag:skip"}} {
             # set qbuf limit to minimum to test stat
             set org_qbuf_limit [lindex [r config get client-query-buffer-limit] 1]
             r config set client-query-buffer-limit 1048576
-            catch {r set key [string repeat a 1048576]}
+            catch {r set key [string repeat a 2048576]} e
+            # We might get an error on the write path of the previous command, which won't be
+            # an I/O error based on how the client is designed. We will need to manually consume
+            # the secondary I/O error.
+            if {![string match "I/O error*" $e]} {
+                catch {r read}
+            }
             set info [r info stats]
             assert_equal [getInfoProperty $info client_query_buffer_limit_disconnections] {1}
             r config set client-query-buffer-limit $org_qbuf_limit
@@ -400,10 +406,10 @@ start_server {tags {"info" "external:skip" "debug_defrag:skip"}} {
             r config set client-output-buffer-limit "normal 10 0 0"
             r set key [string repeat a 100000] ;# to trigger output buffer limit check this needs to be big
             catch {r get key}
+            r config set client-output-buffer-limit $org_outbuf_limit
             set info [r info stats]
             assert_equal [getInfoProperty $info client_output_buffer_limit_disconnections] {1}
-            r config set client-output-buffer-limit $org_outbuf_limit
-        } {OK} {logreqres:skip} ;# same as obuf-limits.tcl, skip logreqres
+        } {} {logreqres:skip} ;# same as obuf-limits.tcl, skip logreqres
 
         test {clients: pubsub clients} {
             set info [r info clients]

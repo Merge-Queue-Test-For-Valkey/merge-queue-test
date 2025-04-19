@@ -124,14 +124,18 @@ proc assert_refcount_morethan {key ref} {
 
 # Wait for the specified condition to be true, with the specified number of
 # max retries and delay between retries. Otherwise the 'elsescript' is
-# executed.
-proc wait_for_condition {maxtries delay e _else_ elsescript} {
+# executed. If 'debugscript' is provided, it is executed after failure of
+# the confition (before the retry delay).
+proc wait_for_condition {maxtries delay e _else_ elsescript {_debug_ ""} {debugscript ""}} {
     while {[incr maxtries -1] >= 0} {
         set errcode [catch {uplevel 1 [list expr $e]} result]
         if {$errcode == 0} {
             if {$result} break
         } else {
             return -code $errcode $result
+        }
+        if {$_debug_ == "debug"} {
+            uplevel 1 $debugscript
         }
         after $delay
     }
@@ -160,12 +164,12 @@ proc verify_replica_online {master replica_idx max_retry} {
     } 
 }
 
-proc wait_for_value_to_propegate_to_replica {master replica key} {
+proc wait_for_value_to_propagate_to_replica {master replica key} {
     set val [$master get $key]
     wait_for_condition 50 500 {
                 ([$replica get $key] eq $val)
     } else {
-        error "Key $key did not propegate. Expected $val but got [$replica get $key]"
+        error "Key $key did not propagate. Expected $val but got [$replica get $key]"
     }
 }
 

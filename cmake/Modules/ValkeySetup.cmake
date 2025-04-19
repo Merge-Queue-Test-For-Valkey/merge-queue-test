@@ -93,6 +93,9 @@ macro (valkey_build_and_install_bin target sources ld_flags libs link_name)
         target_link_libraries(${target} execinfo)
     endif ()
 
+    # Enable all warnings + fail on warning
+    target_compile_options(${target} PRIVATE -Werror -Wall)
+
     # Install cli tool and create a redis symbolic link
     valkey_install_bin(${target})
     valkey_create_symlink(${target} ${link_name})
@@ -237,7 +240,7 @@ endif ()
 set(BUILDING_ARM64 0)
 set(BUILDING_ARM32 0)
 
-if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
     set(BUILDING_ARM64 1)
 endif ()
 
