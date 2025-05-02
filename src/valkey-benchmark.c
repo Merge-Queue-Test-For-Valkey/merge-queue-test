@@ -59,6 +59,9 @@
 #include "hdr_histogram.h"
 #include "cli_common.h"
 #include "mt19937-64.h"
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 
 #define UNUSED(V) ((void)V)
 #define RANDPTR_INITIAL_SIZE 8
@@ -73,9 +76,20 @@
 
 #define CLIENT_GET_EVENTLOOP(c) (c->thread_id >= 0 ? config.threads[c->thread_id]->el : config.el)
 
+#define WORKFLOW_MAX_STAGE_BIT 4
+#define WORKFLOW_MAX_STAGE (1 << WORKFLOW_MAX_STAGE_BIT)
+
 struct benchmarkThread;
 struct clusterNode;
 struct serverConfig;
+
+typedef struct circularArray {
+    int *data;
+    int capacity;
+    int front;
+    int rear;
+    int size;
+} circularArray;
 
 /* Read from replica options */
 typedef enum readFromReplica {
@@ -135,6 +149,10 @@ static struct config {
     pthread_mutex_t liveclients_mutex;
     pthread_mutex_t is_updating_slots_mutex;
     int resp3; /* use RESP3 */
+    char *workflow;
+    _Atomic int max_requests_id;
+    _Atomic int requests_num;
+    lua_State *lua;
 } config;
 
 typedef struct _client {
@@ -151,12 +169,14 @@ typedef struct _client {
     long long latency;  /* Request latency */
     int pending;        /* Number of pending requests (replies to consume) */
     int prefix_pending; /* If non-zero, number of pending prefix commands. Commands
-                           such as auth and select are prefixed to the pipeline of
-                           benchmark commands and discarded after the first send. */
+                        such as auth and select are prefixed to the pipeline of
+                        benchmark commands and discarded after the first send. */
     int prefixlen;      /* Size in bytes of the pending prefix commands */
     int thread_id;
     struct clusterNode *cluster_node;
     int slots_last_update;
+    circularArray *circular_array; /* Circular array of slots */
+    int install_write_handler;
 } *client;
 
 /* Threads. */
@@ -242,6 +262,51 @@ static dictType dtype = {
     NULL               /* allow to expand */
 };
 
+circularArray* initCircularArray(int capacity) {
+    circularArray *ca = zmalloc(sizeof(circularArray));
+    ca->data = zmalloc(capacity * sizeof(int));
+    ca->capacity = capacity;
+    ca->front = 0;
+    ca->rear = 0;
+    ca->size = 0;
+    return ca;
+}
+
+void freeCircularArray(circularArray *ca) {
+    zfree(ca->data);
+    ca->data = NULL;
+    zfree(ca);
+}
+
+int isEmpty(circularArray *ca) {
+    return ca->size == 0;
+}
+
+int isFull(circularArray *ca) {
+    return ca->size == ca->capacity;
+}
+
+void enqueue(circularArray *ca, int value) {
+    if (isFull(ca)) {
+        printf("Circular array is full!\n");
+        exit(1);
+    }
+    ca->data[ca->rear] = value;
+    ca->rear = (ca->rear + 1) % ca->capacity;
+    ca->size++;
+}
+
+int dequeue(circularArray *ca) {
+    if (isEmpty(ca)) {
+        printf("Circular array is empty!\n");
+        exit(1);
+    }
+    int value = ca->data[ca->front];
+    ca->front = (ca->front + 1) % ca->capacity;
+    ca->size--;
+    return value;
+}
+
 static redisContext *getRedisContext(const char *ip, int port, const char *hostsocket) {
     redisContext *ctx = NULL;
     redisReply *reply = NULL;
@@ -295,6 +360,123 @@ cleanup:
     return NULL;
 }
 
+static void redisReplyToLua(lua_State *lua, redisReply *reply) {
+    if (!reply) {
+        lua_pushnil(lua);
+        return;
+    }
+
+    lua_newtable(lua);
+
+    lua_pushstring(lua, "type");
+    lua_pushinteger(lua, reply->type);
+    lua_settable(lua, -3);
+
+    lua_pushstring(lua, "integer");
+    lua_pushinteger(lua, reply->integer);
+    lua_settable(lua, -3);
+
+    lua_pushstring(lua, "len");
+    lua_pushinteger(lua, reply->len);
+    lua_settable(lua, -3);
+
+    if (reply->str) {
+        lua_pushstring(lua, "str");
+        lua_pushstring(lua, reply->str);
+        lua_settable(lua, -3);
+    }
+
+    lua_pushstring(lua, "elements");
+    lua_pushinteger(lua, reply->elements);
+    lua_settable(lua, -3);
+
+    if (reply->elements > 0) {
+        lua_pushstring(lua, "element");
+        lua_newtable(lua);
+        for (size_t i = 0; i < reply->elements; i++) {
+            redisReplyToLua(lua, reply->element[i]);
+            lua_rawseti(lua, -2, i + 1);
+        }
+        lua_settable(lua, -3);
+    }
+}
+
+static int initEngine(char *workflow) {
+    config.lua = luaL_newstate();
+    luaL_openlibs(config.lua);
+
+    sds lua_script = sdsempty();
+    char buf[1024];
+    size_t nread;
+    FILE *fp = fopen(workflow, "r");
+    if (!fp) {
+        fprintf(stderr, "Can't open file '%s': %s\n", workflow, strerror(errno));
+        exit(1);
+    }
+    while ((nread = fread(buf, 1, sizeof(buf), fp)) != 0) {
+        lua_script = sdscatlen(lua_script, buf, nread);
+    }
+    fclose(fp);
+
+    sds function_wrapper = sdscatprintf(sdsempty(), "local function bm(req_id,stage,redis_reply)\n%s\nend\nreturn bm", lua_script);
+
+    if (luaL_loadstring(config.lua, function_wrapper)) {
+        fprintf(stderr, "Lua error: %s\n", lua_tostring(config.lua, -1));
+        exit(1);
+    }
+    sdsfree(lua_script);
+    sdsfree(function_wrapper);
+
+    if (lua_pcall(config.lua, 0, 1, 0)) {
+        fprintf(stderr, "Lua error: %s\n", lua_tostring(config.lua, -1));
+        exit(1);
+    }
+
+    lua_setglobal(config.lua, "bm");
+    return 0;
+}
+
+static int generateCommand(client c, int request_id, redisReply *reply) {
+    if (request_id == 0) {
+        return 0;
+    }
+
+    int req_id = request_id >> WORKFLOW_MAX_STAGE_BIT;
+    int stage = request_id & (WORKFLOW_MAX_STAGE - 1);
+    if (stage + 1 >= WORKFLOW_MAX_STAGE) {
+        return 0;
+    }
+
+    lua_State *lua = config.lua;
+    lua_getglobal(lua, "bm");
+    lua_pushinteger(lua, req_id);
+    lua_pushinteger(lua, stage);
+    redisReplyToLua(lua, reply);
+
+    if (lua_pcall(lua, 3, 1, 0)) {
+        fprintf(stderr, "Lua error: %s\n", lua_tostring(lua, -1));
+        lua_pop(lua, 1);
+        exit(1);
+    }
+
+    if (lua_isstring(lua, -1)) {
+        char *cmd;
+        size_t cmd_len;
+
+        const char *str = lua_tostring(lua, -1);
+        size_t len = lua_strlen(lua, -1);
+        if (len > 0) {
+            cmd_len = redisFormatCommand(&cmd, str);
+            c->obuf = sdscatlen(c->obuf, cmd, cmd_len);
+            free(cmd);
+            enqueue(c->circular_array, (req_id << WORKFLOW_MAX_STAGE_BIT) | (stage + 1));
+            lua_pop(lua, 1);
+            return 1;
+        }
+    }
+    lua_pop(lua, 1);
+    return 0;
+}
 
 static serverConfig *getServerConfig(const char *ip, int port, const char *hostsocket) {
     serverConfig *cfg = zcalloc(sizeof(*cfg));
@@ -356,9 +538,11 @@ static void freeClient(client c) {
     listNode *ln;
     aeDeleteFileEvent(el, c->context->fd, AE_WRITABLE);
     aeDeleteFileEvent(el, c->context->fd, AE_READABLE);
+    c->install_write_handler = 0;
     if (c->thread_id >= 0) {
         int requests_finished = atomic_load_explicit(&config.requests_finished, memory_order_relaxed);
-        if (requests_finished >= config.requests) {
+        int requests_num = atomic_load_explicit(&config.requests_num, memory_order_relaxed);
+        if (requests_finished >= config.requests && requests_finished >= requests_num) {
             aeStop(el);
         }
     }
@@ -366,6 +550,7 @@ static void freeClient(client c) {
     sdsfree(c->obuf);
     zfree(c->randptr);
     zfree(c->stagptr);
+    freeCircularArray(c->circular_array);
     zfree(c);
     if (config.num_threads) pthread_mutex_lock(&(config.liveclients_mutex));
     config.liveclients--;
@@ -390,8 +575,17 @@ static void resetClient(client c) {
     aeDeleteFileEvent(el, c->context->fd, AE_WRITABLE);
     aeDeleteFileEvent(el, c->context->fd, AE_READABLE);
     aeCreateFileEvent(el, c->context->fd, AE_WRITABLE, writeHandler, c);
+    c->install_write_handler = 1;
     c->written = 0;
     c->pending = config.pipeline;
+    atomic_fetch_add_explicit(&config.requests_num, c->pending, memory_order_relaxed);
+    if (config.workflow != NULL) {
+        sdsclear(c->obuf);
+        for (int j = 0; j < config.pipeline; j++) {
+            int requests_id = atomic_fetch_add_explicit(&config.max_requests_id, 1, memory_order_relaxed);
+            assert(generateCommand(c, requests_id << WORKFLOW_MAX_STAGE_BIT, NULL) == 1);
+        }
+    }
 }
 
 static void generateClientKey(client c) {
@@ -442,9 +636,11 @@ static void setClusterKeyHashTag(client c) {
 
 static void clientDone(client c) {
     int requests_finished = atomic_load_explicit(&config.requests_finished, memory_order_relaxed);
+    int requests_num = atomic_load_explicit(&config.requests_num, memory_order_relaxed);
     if (requests_finished >= config.requests) {
         freeClient(c);
-        if (!config.num_threads && config.el) aeStop(config.el);
+        if (!config.num_threads && config.el && requests_finished >= requests_num)
+            aeStop(config.el);
         return;
     }
     if (config.keepalive) {
@@ -486,6 +682,7 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                     exit(1);
                 }
                 redisReply *r = reply;
+                int apply_command = 0;
                 if (r->type == REDIS_REPLY_ERROR) {
                     /* Try to update slots configuration if reply error is
                      * MOVED/ASK/CLUSTERDOWN and the key(s) used by the command
@@ -516,7 +713,15 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                         exit(1);
                     }
                 }
-
+                if (c->prefix_pending == 0 && config.workflow != NULL
+                    && generateCommand(c, dequeue(c->circular_array), reply) > 0) {
+                    if (c->install_write_handler == 0) {
+                        aeDeleteFileEvent(el, c->context->fd, AE_WRITABLE);
+                        aeCreateFileEvent(el, c->context->fd, AE_WRITABLE, writeHandler, c);
+                        c->install_write_handler = 1;
+                    }
+                    apply_command = 1;
+                }
                 freeReplyObject(reply);
                 /* This is an OK for prefix commands such as auth and select.*/
                 if (c->prefix_pending > 0) {
@@ -535,7 +740,13 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                     }
                     continue;
                 }
-                int requests_finished = atomic_fetch_add_explicit(&config.requests_finished, 1, memory_order_relaxed);
+                int requests_finished = 0;
+                if (apply_command) {
+                    c->pending++;
+                    requests_finished = atomic_fetch_add_explicit(&config.requests_finished, 0, memory_order_relaxed);
+                } else {
+                    requests_finished = atomic_fetch_add_explicit(&config.requests_finished, 1, memory_order_relaxed);
+                }
                 if (requests_finished < config.requests) {
                     if (config.num_threads == 0) {
                         hdr_record_value(config.latency_histogram, // Histogram to record to
@@ -579,7 +790,8 @@ static void writeHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     if (c->written == 0) {
         /* Enforce upper bound to number of requests. */
         int requests_issued = atomic_fetch_add_explicit(&config.requests_issued, config.pipeline, memory_order_relaxed);
-        if (requests_issued >= config.requests) {
+        int max_requests = (config.workflow == NULL ? config.requests : config.requests * WORKFLOW_MAX_STAGE);
+        if (requests_issued >= max_requests) {
             return;
         }
 
@@ -608,6 +820,8 @@ static void writeHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                     return;
                 }
             } else {
+                c->written += nwritten;
+                c->install_write_handler = 0;
                 aeDeleteFileEvent(el, c->context->fd, AE_WRITABLE);
                 aeCreateFileEvent(el, c->context->fd, AE_READABLE, readHandler, c);
                 return;
@@ -742,18 +956,35 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
 
     c->prefixlen = sdslen(c->obuf);
     /* Append the request itself. */
-    if (from) {
-        c->obuf = sdscatlen(c->obuf, from->obuf + from->prefixlen, sdslen(from->obuf) - from->prefixlen);
+    c->circular_array = NULL;
+    if (config.workflow != NULL) {
+        c->circular_array = initCircularArray(c->prefix_pending + config.pipeline);
+        for (j = 0; j < c->prefix_pending; j++) {
+            enqueue(c->circular_array, 0);
+        }
+
+        for (j = 0; j < config.pipeline; j++) {
+            int requests_id = atomic_fetch_add_explicit(&config.max_requests_id, 1, memory_order_relaxed);
+            assert(generateCommand(c, requests_id << WORKFLOW_MAX_STAGE_BIT, NULL) == 1);
+        }
     } else {
-        for (j = 0; j < config.pipeline; j++) c->obuf = sdscatlen(c->obuf, cmd, len);
+        if (from) {
+            c->obuf = sdscatlen(c->obuf, from->obuf + from->prefixlen, sdslen(from->obuf) - from->prefixlen);
+        } else {
+            for (j = 0; j < config.pipeline; j++) {
+                c->obuf = sdscatlen(c->obuf, cmd, len);
+            }
+        }
     }
 
     c->written = 0;
     c->pending = config.pipeline + c->prefix_pending;
+    atomic_fetch_add_explicit(&config.requests_num, c->pending, memory_order_relaxed);
     c->randptr = NULL;
     c->randlen = 0;
     c->stagptr = NULL;
     c->staglen = 0;
+    c->install_write_handler = 0;
 
     /* Find substrings in the output buffer that need to be replaced. */
     if (config.replacekeys) {
@@ -820,9 +1051,10 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
         benchmarkThread *thread = config.threads[thread_id];
         el = thread->el;
     }
-    if (config.idlemode == 0)
+    if (config.idlemode == 0) {
+        c->install_write_handler = 1;
         aeCreateFileEvent(el, c->context->fd, AE_WRITABLE, writeHandler, c);
-    else
+    } else
         /* In idle mode, clients still need to register readHandler for catching errors */
         aeCreateFileEvent(el, c->context->fd, AE_READABLE, readHandler, c);
 
@@ -970,6 +1202,8 @@ static void benchmark(const char *title, char *cmd, int len) {
     config.requests_issued = 0;
     config.requests_finished = 0;
     config.previous_requests_finished = 0;
+    config.max_requests_id = 1;
+    config.requests_num = 0;
     config.last_printed_bytes = 0;
     hdr_init(CONFIG_LATENCY_HISTOGRAM_MIN_VALUE,         // Minimum value
              CONFIG_LATENCY_HISTOGRAM_MAX_VALUE,         // Maximum value
@@ -1442,6 +1676,10 @@ int parseOptions(int argc, char **argv) {
             config.num_functions = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "--num-keys-in-fcall")) {
             config.num_keys_in_fcall = atoi(argv[++i]);
+        } else if (!strcmp(argv[i], "--workflow")) {
+            if (lastarg) goto invalid;
+            config.workflow = strdup(argv[++i]);
+            initEngine(config.workflow);
         } else if (!strcmp(argv[i], "--help")) {
             exit_status = 0;
             goto usage;
@@ -1681,6 +1919,8 @@ char *generateFunctionScript(uint32_t num_functions, int with_keys) {
 /* Return true if the named test was selected using the -t command line
  * switch, or if all the tests are selected (no -t passed by user). */
 int test_is_selected(const char *name) {
+    if (config.workflow != NULL) return 0;
+
     char buf[256];
     int l = strlen(name);
 
@@ -2080,12 +2320,17 @@ int main(int argc, char **argv) {
             free(cmd);
         }
 
+        if (config.workflow != NULL) {
+            benchmark("WORKFLOW", NULL, 0);
+        }
+
         if (!config.csv) printf("\n");
     } while (config.loop);
 
     zfree(data);
     freeCliConnInfo(config.conn_info);
     if (config.redis_config != NULL) freeServerConfig(config.redis_config);
+    if (config.workflow != NULL) lua_close(config.lua);
 
     return 0;
 }
