@@ -44,6 +44,7 @@ list(APPEND CLI_LIBS "linenoise")
 valkey_build_and_install_bin(valkey-cli "${VALKEY_CLI_SRCS}" "${VALKEY_SERVER_LDFLAGS}" "${CLI_LIBS}" "redis-cli")
 add_dependencies(valkey-cli generate_commands_def)
 add_dependencies(valkey-cli generate_fmtargs_h)
+add_dependencies(valkey-cli release_header)
 
 # Target: valkey-benchmark
 list(APPEND BENCH_LIBS "fpconv")
@@ -52,6 +53,7 @@ valkey_build_and_install_bin(valkey-benchmark "${VALKEY_BENCHMARK_SRCS}" "${VALK
                              "redis-benchmark")
 add_dependencies(valkey-benchmark generate_commands_def)
 add_dependencies(valkey-benchmark generate_fmtargs_h)
+add_dependencies(valkey-benchmark release_header)
 
 # Targets: valkey-sentinel, valkey-check-aof and valkey-check-rdb are just symbolic links
 valkey_create_symlink("valkey-server" "valkey-sentinel")
