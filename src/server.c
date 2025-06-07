@@ -673,11 +673,19 @@ void hashHashtableTypeDestructor(void *entry) {
     freeHashTypeEntry(hash_entry);
 }
 
+size_t hashHashtableTypeMetadataSize(void) {
+    return sizeof(void *);
+}
+
+extern hashtableElementAccessState hashHashtableTypeAccess(hashtable *ht, void *entry);
+
 hashtableType hashHashtableType = {
     .hashFunction = dictSdsHash,
     .entryGetKey = hashHashtableTypeGetKey,
     .keyCompare = hashtableSdsKeyCompare,
     .entryDestructor = hashHashtableTypeDestructor,
+    .getMetadataSize = hashHashtableTypeMetadataSize,
+    .accessElement = hashHashtableTypeAccess,
 };
 
 /* Hashtable type without destructor */
@@ -2116,6 +2124,9 @@ void createSharedObjects(void) {
     shared.multi = createStringObject("MULTI", 5);
     shared.exec = createStringObject("EXEC", 4);
     shared.hset = createStringObject("HSET", 4);
+    shared.hdel = createStringObject("HDEL", 4);
+    shared.hpexpireat = createStringObject("HPEXPIREAT", 10);
+    shared.hpersist = createStringObject("HPERSIST", 8);
     shared.srem = createStringObject("SREM", 4);
     shared.xgroup = createStringObject("XGROUP", 6);
     shared.xclaim = createStringObject("XCLAIM", 6);
@@ -2148,6 +2159,7 @@ void createSharedObjects(void) {
     shared.special_asterisk = createStringObject("*", 1);
     shared.special_equals = createStringObject("=", 1);
     shared.redacted = makeObjectShared(createStringObject("(redacted)", 10));
+    shared.fields = createStringObject("FIELDS", 6);
 
     for (j = 0; j < OBJ_SHARED_INTEGERS; j++) {
         shared.integers[j] = makeObjectShared(createObject(OBJ_STRING, (void *)(long)j));
@@ -7238,4 +7250,25 @@ __attribute__((weak)) int main(int argc, char **argv) {
     aeDeleteEventLoop(server.el);
     return 0;
 }
+
+void setAccessContext(robj *key, robj *val, serverDb *db) {
+    setAccessContextWithFlags(key, val, db, OBJ_ACCESS_NORMAL);
+}
+
+void setAccessContextWithFlags(robj *key, robj *val, serverDb *db, int flags) {
+    server.access_context.key = key;
+    server.access_context.val = val;
+    server.access_context.db = db;
+    server.access_context.flags = flags;
+    server.access_context.expired = 0;
+}
+
+void resetAccessContext(void) {
+    server.access_context.key = NULL;
+    server.access_context.val = NULL;
+    server.access_context.db = NULL;
+    server.access_context.flags = OBJ_ACCESS_NONE;
+    server.access_context.expired = 0;
+}
+
 /* The End */
