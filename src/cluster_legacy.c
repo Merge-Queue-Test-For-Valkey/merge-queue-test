@@ -6295,13 +6295,26 @@ const char *clusterGetMessageTypeString(int type) {
     return "unknown";
 }
 
-/* Get the slot from robj and return it. If the slot is not valid,
- * return -1 and send an error to the client. */
-int getSlotOrReply(client *c, robj *o) {
+int getSlotOrError(robj *o, char **err_out) {
     long long slot;
 
     if (getLongLongFromObject(o, &slot) != C_OK || slot < 0 || slot >= CLUSTER_SLOTS) {
-        addReplyError(c, "Invalid or out of range slot");
+        if (err_out) {
+            *err_out = "Invalid or out of range slot";
+        }
+        return -1;
+    }
+
+    return (int)slot;
+}
+
+/* Get the slot from robj and return it. If the slot is not valid,
+ * return -1 and send an error to the client. */
+int getSlotOrReply(client *c, robj *o) {
+    char *err = NULL;
+    int slot = getSlotOrError(o, &err);
+    if (err) {
+        addReplyErrorSds(c, sdsnew(err));
         return -1;
     }
     return (int)slot;
@@ -6560,7 +6573,34 @@ unsigned int delKeysInSlot(unsigned int hashslot, int lazy, bool propagate_del, 
      * state so that we don't assert in propagateNow(). */
     server.server_del_keys_in_slot = 1;
     unsigned int j = 0;
+    robj *argv[4];
     int before_execution_nesting = server.execution_nesting;
+    enterExecutionUnit(1, 0);
+
+    /* Check if all replicas support CLUSTER FLUSHSLOT */
+    listIter replicas_iter;
+    listNode *replicas_list_node;
+    listRewind(server.replicas, &replicas_iter);
+    int legacy_replica = 0;
+    while ((replicas_list_node = listNext(&replicas_iter)) != NULL) {
+        client *replica = listNodeValue(replicas_list_node);
+        /* 0x90000 is 9.0.0, when CLUSTER FLUSHSLOT was added. */
+        if (replica->repl_data->replica_version < 0x90000) {
+            legacy_replica = 1;
+            break;
+        }
+    }
+
+    /* Propagate as a single CLUSTER FLUSHSLOT <slot> ASYNC/SYNC if replicas
+     * support it. */
+    if (propagate_del && !legacy_replica) {
+        argv[0] = shared.cluster;
+        argv[1] = shared.flushslot;
+        argv[2] = createStringObjectFromLongLong(hashslot);
+        argv[3] = lazy ? shared.async : shared.sync;
+        alsoPropagate(/*dbid=*/-1, argv, 4, PROPAGATE_AOF | PROPAGATE_REPL);
+        decrRefCount(argv[2]);
+    }
 
     for (int i = 0; i < server.dbnum; i++) {
         kvstoreHashtableIterator *kvs_di = NULL;
@@ -6569,7 +6609,6 @@ unsigned int delKeysInSlot(unsigned int hashslot, int lazy, bool propagate_del, 
         kvs_di = kvstoreGetHashtableIterator(db.keys, hashslot, HASHTABLE_ITER_SAFE);
         while (kvstoreHashtableIteratorNext(kvs_di, &next)) {
             robj *valkey = next;
-            enterExecutionUnit(1, 0);
             sds sdskey = objectGetKey(valkey);
             robj *key = createStringObject(sdskey, sdslen(sdskey));
             if (lazy) {
@@ -6577,8 +6616,10 @@ unsigned int delKeysInSlot(unsigned int hashslot, int lazy, bool propagate_del, 
             } else {
                 dbSyncDelete(&db, key);
             }
-            // if is command, skip del propagate
-            if (propagate_del) propagateDeletion(&db, key, lazy);
+
+            /* Legacy replicas require individual key deletion. */
+            if (propagate_del && legacy_replica) propagateDeletion(&db, key, lazy);
+
             signalModifiedKey(NULL, &db, key);
             if (send_del_event) {
                 /* In the `cluster flushslot` scenario, the keys are actually deleted so notify everyone. */
@@ -6589,14 +6630,16 @@ unsigned int delKeysInSlot(unsigned int hashslot, int lazy, bool propagate_del, 
                  * keyspace notification to the modules, but not to clients. */
                 moduleNotifyKeyspaceEvent(NOTIFY_GENERIC, "del", key, db.id);
             }
-            exitExecutionUnit();
-            postExecutionUnitOperations();
             decrRefCount(key);
             j++;
             server.dirty++;
         }
         kvstoreReleaseHashtableIterator(kvs_di);
     }
+
+    exitExecutionUnit();
+    postExecutionUnitOperations();
+
     server.server_del_keys_in_slot = 0;
     serverAssert(server.execution_nesting == before_execution_nesting);
     return j;

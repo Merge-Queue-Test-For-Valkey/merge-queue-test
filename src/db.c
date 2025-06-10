@@ -607,6 +607,9 @@ long long emptyDbStructure(serverDb *dbarray, int dbnum, int async, void(callbac
  * The dbnum can be -1 if all the DBs should be flushed, or the specified
  * DB number if we want to flush only a single database number.
  *
+ * The hashslot can be -1 if all the slots should be flushed, or the specified
+ * hashslot if we want to flush only a single slot.
+ *
  * Flags are be EMPTYDB_NO_FLAGS if no special flags are specified or
  * EMPTYDB_ASYNC if we want the memory to be freed in a different thread
  * and the function to return ASAP. EMPTYDB_NOFUNCTIONS can also be set
@@ -2439,8 +2442,7 @@ int getKeysUsingLegacyRangeSpec(struct serverCommand *cmd, robj **argv, int argc
             }
         }
         keys[i].pos = j;
-        /* Flags are omitted from legacy key specs */
-        keys[i++].flags = 0;
+        keys[i++].flags = cmd->legacy_range_key_spec.flags;
     }
     result->numkeys = i;
     return i;

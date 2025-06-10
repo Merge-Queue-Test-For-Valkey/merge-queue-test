@@ -972,10 +972,24 @@ int clusterSlotByCommand(struct serverCommand *cmd, robj **argv, int argc, int *
     initGetKeysResult(&result);
     int numkeys = getKeysFromCommand(cmd, argv, argc, &result);
     int slot = -1;
-    if (numkeys == 0) *read_flags |= READ_FLAGS_NO_KEYS;
+    *read_flags |= READ_FLAGS_NO_KEYS;
     for (int i = 0; i < numkeys; i++) {
-        sds key = argv[result.keys[i].pos]->ptr;
-        int keyslot = keyHashSlot(key, sdslen(key));
+        keyReference *key_ref = &result.keys[i];
+        robj *key_obj = argv[key_ref->pos];
+        sds key = key_obj->ptr;
+        int keyslot;
+        *read_flags &= ~READ_FLAGS_NO_KEYS;
+        if (key_ref->flags & CMD_KEY_USES_SLOT) {
+            keyslot = getSlotOrError(key_obj, NULL);
+            if (slot == -1 && keyslot <= 0) {
+                /* If there are no other keys in the command, we will treat this
+                 * as NO_KEYS to allow the command handler to return an invalid
+                 * slot error message */
+                *read_flags |= READ_FLAGS_NO_KEYS;
+            }
+        } else {
+            keyslot = keyHashSlot((char *)key, sdslen(key));
+        }
         if (slot == -1) {
             slot = keyslot;
         } else if (keyslot != slot) {
@@ -1206,7 +1220,7 @@ clusterNode *getNodeByQuery(client *c, int *error_code) {
              * node until the migration completes with CLUSTER SETSLOT <slot>
              * NODE <node-id>. */
             int flags = LOOKUP_NOTOUCH | LOOKUP_NOSTATS | LOOKUP_NONOTIFY | LOOKUP_NOEXPIRE;
-            if (!pubsubshard_included &&
+            if (!pubsubshard_included && !(keyindex[j].flags & CMD_KEY_NOT_KEY) &&
                 (!c->flag.multi || (c->flag.multi && c->cmd->proc == execCommand))) {
                 /* Multi/Exec validation happens on exec */
                 if (lookupKeyReadWithFlags(currentDb, thiskey, flags) == NULL)
@@ -1595,7 +1609,6 @@ void resetClusterStats(void) {
 
     clusterSlotStatResetAll();
 }
-
 
 void clusterCommandFlushslot(client *c) {
     int slot;
