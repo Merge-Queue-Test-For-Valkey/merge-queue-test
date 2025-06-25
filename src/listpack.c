@@ -148,7 +148,7 @@ int lpSafeToAdd(unsigned char *lp, size_t add) {
 }
 
 /* Create a new, empty listpack.
- * On success the new listpack is returned, otherwise an error is returned.
+ * On success the new listpack is returned; otherwise, an error is returned.
  * Pre-allocate at least `capacity` bytes of memory,
  * over-allocated memory can be shrunk by `lpShrinkToFit`.
  * */
@@ -236,7 +236,7 @@ static inline void lpEncodeIntegerGetType(int64_t v, unsigned char *intenc, uint
 
 /* Given an element 'ele' of size 'size', determine if the element can be
  * represented inside the listpack encoded as integer, and returns
- * LP_ENCODING_INT if so. Otherwise returns LP_ENCODING_STR if no integer
+ * LP_ENCODING_INT if so. Otherwise, returns LP_ENCODING_STR if no integer
  * encoding is possible.
  *
  * If the LP_ENCODING_INT is returned, the function stores the integer encoded
@@ -442,7 +442,7 @@ unsigned char *lpLast(unsigned char *lp) {
 }
 
 /* Return the number of elements inside the listpack. This function attempts
- * to use the cached value when within range, otherwise a full scan is
+ * to use the cached value when within range; otherwise, a full scan is
  * needed. As a side effect of calling this function, the listpack header
  * could be modified, because if the count is found to be already within
  * the 'numele' header field range, the new value is set. */
@@ -471,7 +471,7 @@ unsigned long lpLength(unsigned char *lp) {
  * Specifically, if 'intbuf' is NULL:
  *
  * If the element is internally encoded as an integer, the function returns
- * NULL and populates the integer value by reference in 'count'. Otherwise if
+ * NULL and populates the integer value by reference in 'count'. Otherwise, if
  * the element is encoded as a string a pointer to the string (pointing inside
  * the listpack itself) is returned, and 'count' is set to the length of the
  * string.
@@ -495,7 +495,7 @@ unsigned long lpLength(unsigned char *lp) {
  * If the function is called against a badly encoded ziplist, so that there
  * is no valid way to parse it, the function returns like if there was an
  * integer encoded with value 12345678900000000 + <unrecognized byte>, this may
- * be an hint to understand that something is wrong. To crash in this case is
+ * be a hint to understand that something is wrong. To crash in this case is
  * not sensible because of the different requirements of the application using
  * this lib.
  *
@@ -586,7 +586,7 @@ unsigned char *lpGet(unsigned char *p, int64_t *count, unsigned char *intbuf) {
 
 /* This is just a wrapper to lpGet() that is able to get entry value directly.
  * When the function returns NULL, it populates the integer value by reference in 'lval'.
- * Otherwise if the element is encoded as a string a pointer to the string (pointing
+ * Otherwise, if the element is encoded as a string a pointer to the string (pointing
  * inside the listpack itself) is returned, and 'slen' is set to the length of the
  * string. */
 unsigned char *lpGetValue(unsigned char *p, unsigned int *slen, long long *lval) {
@@ -690,7 +690,7 @@ unsigned char *lpFind(unsigned char *lp, unsigned char *p, unsigned char *s, uin
  * or replace with a string, which is stored in the 'elestr' buffer.
  *
  * Returns NULL on out of memory or when the listpack total length would exceed
- * the max allowed size of 2^32-1, otherwise the new pointer to the listpack
+ * the max allowed size of 2^32-1; otherwise, the new pointer to the listpack
  * holding the new element is returned (and the old pointer passed is no longer
  * considered valid)
  *
@@ -738,7 +738,7 @@ unsigned char *lpInsert(unsigned char *lp,
         /* Calling lpEncodeGetType() results into the encoded version of the
          * element to be stored into 'intenc' in case it is representable as
          * an integer: in that case, the function returns LP_ENCODING_INT.
-         * Otherwise if LP_ENCODING_STR is returned, we'll have to call
+         * Otherwise, if LP_ENCODING_STR is returned, we'll have to call
          * lpEncodeString() to actually write the encoded string on place later.
          *
          * Whatever the returned encoding is, 'enclen' is populated with the
@@ -782,7 +782,7 @@ unsigned char *lpInsert(unsigned char *lp,
         dst = lp + poff;
     }
 
-    /* Setup the listpack relocating the elements to make the exact room
+    /* Set up the listpack relocating the elements to make the exact room
      * we need to store the new one. */
     if (where == LP_BEFORE) {
         memmove(dst + enclen + backlen_size, dst, old_listpack_bytes - poff);
@@ -991,7 +991,7 @@ unsigned char *lpDeleteRange(unsigned char *lp, long index, unsigned long num) {
 
 /* Delete the elements 'ps' passed as an array of 'count' element pointers and
  * return the resulting listpack. The elements must be given in the same order
- * as they apper in the listpack. */
+ * as they appear in the listpack. */
 unsigned char *lpBatchDelete(unsigned char *lp, unsigned char **ps, unsigned long count) {
     if (count == 0) return lp;
     unsigned char *dst = ps[0];

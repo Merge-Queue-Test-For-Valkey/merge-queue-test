@@ -61,7 +61,7 @@ static int luaServerBreakpointCommand(lua_State *lua) {
  *
  * DEPRECATED: Now do nothing and always return true.
  * Turn on single commands replication if the script never called
- * a write command so far, and returns true. Otherwise if the script
+ * a write command so far, and returns true. Otherwise, if the script
  * already started to write, returns false and stick to whole scripts
  * replication, which is our default. */
 int luaServerReplicateCommandsCommand(lua_State *lua) {
@@ -129,7 +129,7 @@ static void initializeEvalLuaState(lua_State *lua) {
 
     lua_setglobal(lua, "server");
 
-    /* Duplicate the function with __server__err__hanler and
+    /* Duplicate the function with __server__err__handler and
      * __redis__err_handler name for backwards compatibility. */
     lua_pushstring(lua, REGISTRY_ERROR_HANDLER_NAME);
     lua_gettable(lua, LUA_REGISTRYINDEX);

@@ -166,7 +166,7 @@ proc ping_server {host port} {
     return $retval
 }
 
-# Return 1 if the server at the specified addr is reachable by PING, otherwise
+# Return 1 if the server at the specified addr is reachable by PING; otherwise,
 # returns 0. Performs a try every 50 milliseconds for the specified number
 # of retries.
 proc server_is_up {host port retrynum} {
@@ -402,7 +402,7 @@ proc run_external_server_test {code overrides} {
         dict set saved_config $param [lindex [r config get $param] 1]
         r config set $param $val
 
-        # If we enable appendonly, wait for for rewrite to complete. This is
+        # If we enable appendonly, wait for rewrite to complete. This is
         # required for tests that begin with a bg* command which will fail if
         # the rewriteaof operation is not completed at this point.
         if {$param == "appendonly" && $val == "yes"} {

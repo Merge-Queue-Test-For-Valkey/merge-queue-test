@@ -26,7 +26,7 @@ start_server {tags {"scripting"}} {
         set _ $e
     } {*already exists*}
 
-    test {FUNCTION - Create an already exiting library raise error (case insensitive)} {
+    test {FUNCTION - Create an already exiting library raise error (case-insensitive)} {
         catch {
             r function load [get_function_code LUA test test {return 'hello1'}]
         } e
@@ -35,7 +35,7 @@ start_server {tags {"scripting"}} {
 
     test {FUNCTION - Create a library with wrong name format} {
         catch {
-            r function load [get_function_code LUA {bad\0foramat} test {return 'hello1'}]
+            r function load [get_function_code LUA {bad\0format} test {return 'hello1'}]
         } e
         set _ $e
     } {*Library names can only contain letters, numbers, or underscores(_)*}
@@ -59,7 +59,7 @@ start_server {tags {"scripting"}} {
         r fcall test 0
     } {hello1}
 
-    test {FUNCTION - test function case insensitive} {
+    test {FUNCTION - test function case-insensitive} {
         r fcall TEST 0
     } {hello1}
 
@@ -985,7 +985,7 @@ start_server {tags {"scripting"}} {
         r config set maxmemory 0
     } {OK} {needs:config-maxmemory}
 
-    test {FUNCTION - verify allow-omm allows running any command} {
+    test {FUNCTION - verify allow-oom allows running any command} {
         r FUNCTION load replace {#!lua name=f1
             server.register_function{
                 function_name='f1',
@@ -1046,7 +1046,7 @@ start_server {tags {"scripting"}} {
         }
         catch {r fcall_ro f1 1 x} e
         set _ $e
-    } {*Can not execute a script with write flag using \*_ro command*}
+    } {*Cannot execute a script with write flag using \*_ro command*}
 
     test {FUNCTION - write script with no-writes flag} {
         r function load replace {#!lua name=test
@@ -1103,7 +1103,7 @@ start_server {tags {"scripting"}} {
         assert_equal {hello} [r fcall f2 0]
 
         catch {[r fcall f3 1 x]} e
-        assert_match {ERR *Can not execute the command on a stale replica*} $e
+        assert_match {ERR *Cannot execute the command on a stale replica*} $e
 
         assert_match {*redis_version*} [r fcall f4 0]
 

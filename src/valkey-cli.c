@@ -905,7 +905,7 @@ static void cliInitHelp(void) {
     dict *groups;
 
     if (cliConnect(CC_QUIET) == VALKEY_ERR) {
-        /* Can not connect to the server, but we still want to provide
+        /* Cannot connect to the server, but we still want to provide
          * help, generate it only from the static cli_commands.c data instead. */
         groups = dictCreate(&groupsdt);
         cliLegacyInitHelp(groups);
@@ -2376,7 +2376,7 @@ static int cliSendCommand(int argc, char **argv, long repeat) {
                           !strcasecmp(command, "sunsubscribe"));
     if (!strcasecmp(command, "sync") || !strcasecmp(command, "psync")) config.replica_mode = 1;
 
-    /* When the user manually calls SCRIPT DEBUG, setup the activation of
+    /* When the user manually calls SCRIPT DEBUG, set up the activation of
      * debugging mode on the next eval if needed. */
     if (argc == 3 && !strcasecmp(argv[0], "script") && !strcasecmp(argv[1], "debug")) {
         if (!strcasecmp(argv[2], "yes") || !strcasecmp(argv[2], "sync")) {
@@ -2392,7 +2392,7 @@ static int cliSendCommand(int argc, char **argv, long repeat) {
         config.output = OUTPUT_RAW;
     }
 
-    /* Setup argument length */
+    /* Set up argument length */
     argvlen = zmalloc(argc * sizeof(size_t));
     for (j = 0; j < argc; j++) argvlen[j] = sdslen(argv[j]);
 
@@ -2421,7 +2421,7 @@ static int cliSendCommand(int argc, char **argv, long repeat) {
             /* When a push callback is set, valkeyGetReply (libvalkey) loops until
              * an in-band message is received, but these commands are confirmed
              * using push replies only. There is one push reply per channel if
-             * channels are specified, otherwise at least one. */
+             * channels are specified; otherwise, at least one. */
             num_expected_pubsub_push = argc > 1 ? argc - 1 : 1;
             /* Unset our default PUSH handler so this works in RESP2/RESP3 */
             valkeySetPushCallback(context, NULL);
@@ -2432,7 +2432,7 @@ static int cliSendCommand(int argc, char **argv, long repeat) {
             replicaMode(0);
             config.replica_mode = 0;
             zfree(argvlen);
-            return VALKEY_ERR; /* Error = replilcaMode lost connection to primary */
+            return VALKEY_ERR; /* Error = replicaMode lost connection to primary */
         }
 
         /* Read response, possibly skipping pubsub/push messages. */
@@ -3028,7 +3028,7 @@ static void usage(int err) {
     fprintf(target,
             "  --latency          Enter a special mode continuously sampling latency.\n"
             "                     If you use this mode in an interactive session it runs\n"
-            "                     forever displaying real-time stats. Otherwise if --raw or\n"
+            "                     forever displaying real-time stats. Otherwise, if --raw or\n"
             "                     --csv is specified, or if you redirect the output to a non\n"
             "                     TTY, it samples the latency for 1 second (you can use\n"
             "                     -i to change the interval), then produces a single output\n"
@@ -3122,7 +3122,7 @@ static int confirmWithYes(char *msg, int ignore_force) {
 
 static int issueCommandRepeat(int argc, char **argv, long repeat) {
     /* In Lua debugging mode, we want to pass the "help" to the server to get
-     * it's own HELP message, rather than handle it by the CLI, see ldbRepl.
+     * its own HELP message, rather than handle it by the CLI, see ldbRepl.
      *
      * For the normal server HELP, we can process it without a connection. */
     if (!config.eval_ldb && (!strcasecmp(argv[0], "help") || !strcasecmp(argv[0], "?"))) {
@@ -3730,7 +3730,7 @@ clusterManagerCommandDef clusterManagerCommands[] = {
     {"add-node", clusterManagerCommandAddNode, 2, "new_host:new_port existing_host:existing_port",
      "replica,primaries-id <arg>"},
     {"del-node", clusterManagerCommandDeleteNode, 2, "host:port node_id", NULL},
-    {"call", clusterManagerCommandCall, -2, "host:port command arg arg .. arg", "only-primaries,only-replicas"},
+    {"call", clusterManagerCommandCall, -2, "host:port command arg arg ... arg", "only-primaries,only-replicas"},
     {"set-timeout", clusterManagerCommandSetTimeout, 2, "host:port milliseconds", NULL},
     {"import", clusterManagerCommandImport, 1, "host:port",
      "from <arg>,from-user <arg>,from-pass <arg>,from-askpass,copy,replace"},
@@ -5869,7 +5869,7 @@ static clusterManagerNode *clusterManagerNodePrimaryRandom(void) {
             return n;
         }
     }
-    /* Can not be reached */
+    /* Cannot be reached */
     assert(0);
     /* Make compiler happy */
     return 0;
@@ -6158,7 +6158,7 @@ static int clusterManagerFixOpenSlot(int slot) {
             }
         }
 
-        /* If the node is neither migrating nor importing and it's not
+        /* If the node is neither migrating nor importing and it isn't
          * the owner, then is added to the importing list in case
          * it has keys in the slot. */
         if (!is_migrating && !is_importing && n != owner) {
@@ -7138,7 +7138,7 @@ static int clusterManagerCommandAddNode(int argc, char **argv) {
             }
             assert(function_list_reply->type == VALKEY_REPLY_ARRAY);
             if (function_list_reply->elements > 0) {
-                clusterManagerLogErr(">>> New node already contains functions and can not be added to the cluster. Use "
+                clusterManagerLogErr(">>> New node already contains functions and cannot be added to the cluster. Use "
                                      "FUNCTION FLUSH and try again.\r\n");
                 success = 0;
                 goto cleanup;

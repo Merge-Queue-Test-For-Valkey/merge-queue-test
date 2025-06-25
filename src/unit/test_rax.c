@@ -47,7 +47,7 @@ long long _ustime(void);                  /* From test_crc64combine.c */
  * used in order to test the radix tree implementation against something that
  * will always "tell the truth" :-) */
 
-/* This is huge but we want it fast enough without reahshing needed. */
+/* This is huge but we want it fast enough without rehashing needed. */
 #define HT_TABLE_SIZE 100000
 typedef struct htNode {
     uint64_t keylen;
@@ -128,7 +128,7 @@ int htRem(hashtable *t, unsigned char *s, size_t len) {
 void *htNotFound = (void *)"ht-not-found";
 
 /* Find an element inside the hash table. Returns htNotFound if the
- * element is not there, otherwise returns the associated value. */
+ * element is not there; otherwise, returns the associated value. */
 void *htFind(hashtable *t, unsigned char *s, size_t len) {
     htNode *n = htRawLookup(t, s, len, NULL, NULL);
     if (!n) return htNotFound;
@@ -323,7 +323,7 @@ int fuzzTest(int keymode, size_t count, double addprob, double remprob) {
 /* Redis Cluster alike fuzz testing.
  *
  * This test simulates the radix tree usage made by Redis Cluster in order
- * to maintain the hash slot -> keys mappig. The keys are alphanumerical
+ * to maintain the hash slot -> keys mapping. The keys are alphanumerical
  * but the first two bytes that are binary (and are the key hashed).
  *
  * In this test there is no comparison with the hash table, the only goal
@@ -347,7 +347,7 @@ int fuzzTestCluster(size_t count, double addprob, double remprob) {
         /* Generate a random key by altering our template key. */
 
         /* With a given probability, let's use a common prefix so that there
-         * is a subset of keys that have an higher percentage of probability
+         * is a subset of keys that have a higher percentage of probability
          * of being hit again and again. */
         size_t commonprefix = genrand64_int64() & 0xf;
         if (commonprefix == 0) memcpy(key + 10, "2e68e5", 6);
@@ -491,7 +491,7 @@ int iteratorFuzzTest(int keymode, size_t count) {
             if (array_res) seekidx--;
         }
 
-        /* Both the iteratos should agree about EOF. */
+        /* Both the iterators should agree about EOF. */
         if (array_res != rax_res) {
             printf("Iter fuzz: iterators do not agree about EOF "
                    "at iteration %d:  "
@@ -746,7 +746,7 @@ int test_raxRegressionTest3(int argc, char **argv, int flags) {
     return 0;
 }
 
-/* Regression test #4: Github issue #8, iterator does not populate the
+/* Regression test #4: GitHub issue #8, iterator does not populate the
  * data field after seek in case of exact match. The test case is looks odd
  * because it is quite indirect: Seeking "^" will result into seeking
  * the element >= "", and since we just added "" an exact match happens,

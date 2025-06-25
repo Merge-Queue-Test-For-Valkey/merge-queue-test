@@ -301,7 +301,7 @@ static void zslDelete(zskiplist *zsl, zskiplistNode *node) {
  * Note that this function attempts to just update the node, in case after
  * the score update, the node would be exactly at the same position. If the old
  * node can be kept it returns NULL.
- * Otherwise the skiplist is modified by removing and re-adding a new
+ * Otherwise, the skiplist is modified by removing and re-adding a new
  * element, which is more costly. A pointer to the new node is returned. */
 static zskiplistNode *zslUpdateScore(zskiplist *zsl, zskiplistNode *node, double newscore) {
     /* If the node, after the score update, would be still exactly
@@ -1570,7 +1570,7 @@ int zsetDel(robj *zobj, sds ele) {
  * forth up to length-1 elements.
  *
  * If 'reverse' is false, the rank is returned considering as first element
- * the one with the lowest score. Otherwise if 'reverse' is non-zero
+ * the one with the lowest score. Otherwise, if 'reverse' is non-zero
  * the rank is computed considering as element with rank 0 the one with
  * the highest score. */
 static long zsetRank(robj *zobj, sds ele, int reverse, double *output_score) {
@@ -3784,7 +3784,7 @@ void addZpopInitialReply(client *c, int emitkey, int use_nested_array, long rang
  * 'reply_nil_when_empty' when true we reply a NIL if we are not able to pop up any elements.
  * Like in ZMPOP/BZMPOP we reply with a structured nested array containing key name
  * and member + score pairs. In these commands, we reply with null when we have no result.
- * Otherwise in ZPOPMIN/ZPOPMAX we reply an empty array by default.
+ * Otherwise, in ZPOPMIN/ZPOPMAX we reply an empty array by default.
  *
  * 'deleted' is an optional output argument to get an indication
  * if the key got deleted by this function.
@@ -3806,7 +3806,7 @@ void genericZpopCommand(client *c,
 
     if (deleted) *deleted = 0;
 
-    /* Check type and break on the first error, otherwise identify candidate. */
+    /* Check type and break on the first error; otherwise, identify candidate. */
     idx = 0;
     while (idx < keyc) {
         key = keyv[idx++];
@@ -4217,7 +4217,7 @@ void zrandmemberWithCountCommand(client *c, long l, int withscores) {
             zsetTypeRandomElement(zsetobj, size, &key, withscores ? &score : NULL);
 
             /* Try to add the object to the hashtable. If it already exists
-             * free it, otherwise increment the number of objects we have
+             * free it; otherwise, increment the number of objects we have
              * in the result hashtable. */
             sds skey = zsetSdsFromListpackEntry(&key);
             if (!hashtableAdd(ht, skey)) {

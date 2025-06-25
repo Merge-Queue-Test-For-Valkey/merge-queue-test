@@ -474,8 +474,8 @@ start_cluster 1 1 {tags {external:skip cluster} overrides {cluster-slot-stats-en
         set slot [R 0 cluster keyslot $channel]
         set primary [Rn 0]
         set replica [Rn 1]
-        set replica_subcriber [valkey_deferring_client -1]
-        $replica_subcriber SSUBSCRIBE $channel
+        set replica_subscriber [valkey_deferring_client -1]
+        $replica_subscriber SSUBSCRIBE $channel
         # *2\r\n$10\r\nssubscribe\r\n$7\r\nchannel\r\n --> 34 bytes.
         $primary SPUBLISH $channel hello
         # *3\r\n$8\r\nspublish\r\n$7\r\nchannel\r\n$5\r\nhello\r\n --> 42 bytes.
@@ -851,12 +851,12 @@ start_cluster 1 0 {tags {external:skip cluster} overrides {cluster-slot-stats-en
     }
 
     test "CLUSTER SLOT-STATS ORDERBY arg sanity check." {
-        # Non-existent argument.
-        assert_error "ERR*" {R 0 CLUSTER SLOT-STATS ORDERBY key-count non-existent-arg}
+        # Nonexistent argument.
+        assert_error "ERR*" {R 0 CLUSTER SLOT-STATS ORDERBY key-count nonexistent-arg}
         # Negative LIMIT.
         assert_error "ERR*" {R 0 CLUSTER SLOT-STATS ORDERBY key-count DESC LIMIT -1}
-        # Non-existent ORDERBY metric.
-        assert_error "ERR*" {R 0 CLUSTER SLOT-STATS ORDERBY non-existent-metric}
+        # Nonexistent ORDERBY metric.
+        assert_error "ERR*" {R 0 CLUSTER SLOT-STATS ORDERBY nonexistent-metric}
         # When cluster-slot-stats-enabled config is disabled, you cannot sort using advanced metrics.
         R 0 CONFIG SET cluster-slot-stats-enabled no
         set orderby "cpu-usec"

@@ -492,7 +492,7 @@ void loadServerConfigFromString(sds config) {
 
             if ((config->flags & MULTI_ARG_CONFIG) && argc == 2 && sdslen(argv[1])) {
                 /* For MULTI_ARG_CONFIGs, if we only have one argument, try to split it by spaces.
-                 * Only if the argument is not empty, otherwise something like --save "" will fail.
+                 * Only if the argument is not empty; otherwise, something like --save "" will fail.
                  * So that we can support something like --config "arg1 arg2 arg3". */
                 sds *new_argv;
                 int new_argc;
@@ -542,7 +542,7 @@ void loadServerConfigFromString(sds config) {
              * remove it from the command table. */
             serverAssert(hashtableDelete(server.commands, argv[1]));
 
-            /* Otherwise we re-add the command under a different name. */
+            /* Otherwise, we re-add the command under a different name. */
             if (sdslen(argv[2]) != 0) {
                 if (cmd->current_name != cmd->fullname) {
                     sdsfree(cmd->current_name);
@@ -1410,7 +1410,7 @@ void rewriteConfigUserOption(struct rewriteConfigState *state) {
         return;
     }
 
-    /* Otherwise scan the list of users and rewrite every line. Note that
+    /* Otherwise, scan the list of users and rewrite every line. Note that
      * in case the list here is empty, the effect will just be to comment
      * all the users directive inside the config file. */
     raxIterator ri;
@@ -1659,7 +1659,7 @@ sds getConfigDebugInfo(void) {
 /* This function replaces the old configuration file with the new content
  * in an atomic manner.
  *
- * The function returns 0 on success, otherwise -1 is returned and errno
+ * The function returns 0 on success; otherwise, -1 is returned and errno
  * is set accordingly. */
 int rewriteConfigOverwriteFile(char *configfile, sds content) {
     int fd = -1;
@@ -1729,7 +1729,7 @@ cleanup:
  * The force_write flag overrides this behavior and forces everything to be
  * written. This is currently only used for testing purposes.
  *
- * On error -1 is returned and errno is set accordingly, otherwise 0. */
+ * On error -1 is returned and errno is set accordingly; otherwise, 0. */
 int rewriteConfig(char *path, int force_write) {
     struct rewriteConfigState *state;
     sds newcontent;
@@ -2528,7 +2528,7 @@ static int updateWatchdogPeriod(const char **err) {
     return 1;
 }
 
-static int updateAppendonly(const char **err) {
+static int updateAppendOnly(const char **err) {
     if (!server.aof_enabled && server.aof_state != AOF_OFF) {
         stopAppendOnly();
     } else if (server.aof_enabled && server.aof_state == AOF_OFF) {
@@ -3181,7 +3181,7 @@ standardConfig static_configs[] = {
     createBoolConfig("activedefrag", NULL, DEBUG_CONFIG | MODIFIABLE_CONFIG, server.active_defrag_enabled, CONFIG_ACTIVE_DEFRAG_DEFAULT, isValidActiveDefrag, NULL),
     createBoolConfig("syslog-enabled", NULL, IMMUTABLE_CONFIG, server.syslog_enabled, 0, NULL, NULL),
     createBoolConfig("cluster-enabled", NULL, IMMUTABLE_CONFIG, server.cluster_enabled, 0, NULL, NULL),
-    createBoolConfig("appendonly", NULL, MODIFIABLE_CONFIG | DENY_LOADING_CONFIG, server.aof_enabled, 0, NULL, updateAppendonly),
+    createBoolConfig("appendonly", NULL, MODIFIABLE_CONFIG | DENY_LOADING_CONFIG, server.aof_enabled, 0, NULL, updateAppendOnly),
     createBoolConfig("cluster-allow-reads-when-down", NULL, MODIFIABLE_CONFIG, server.cluster_allow_reads_when_down, 0, NULL, NULL),
     createBoolConfig("cluster-allow-pubsubshard-when-down", NULL, MODIFIABLE_CONFIG, server.cluster_allow_pubsubshard_when_down, 1, NULL, NULL),
     createBoolConfig("crash-log-enabled", NULL, MODIFIABLE_CONFIG, server.crashlog_enabled, 1, NULL, updateSighandlerEnabled),

@@ -125,7 +125,7 @@ proc execute_test_code {__testname filename code} {
     send_data_packet $::test_server_fd done "$__testname"
 }
 
-# Setup a list to hold a stack of server configs. When calls to start_server
+# Set up a list to hold a stack of server configs. When calls to start_server
 # are nested, use "srv 0 pid" to get the pid of the inner server. To access
 # outer servers, use "srv -1 pid" etcetera.
 set ::servers {}
@@ -577,7 +577,7 @@ proc print_help_screen {} {
         "                   runtest-moduleapi which will build the test module."
         "--valgrind         Run the test over valgrind."
         "--durable          suppress test crashes and keep running"
-        "--stack-logging    Enable OSX leaks/malloc stack logging."
+        "--stack-logging    Enable macOS leaks/malloc stack logging."
         "--accurate         Run slow randomized tests for more iterations."
         "--quiet            Don't show individual tests."
         "--single <unit>    Just execute the specified unit (see next option). This"
@@ -908,7 +908,7 @@ proc close_replication_stream {s} {
 }
 
 # With the parallel test running multiple server instances at the same time
-# we need a fast enough computer, otherwise a lot of tests may generate
+# we need a fast enough computer; otherwise, a lot of tests may generate
 # false positives.
 # If the computer is too slow we revert the sequential test without any
 # parallelism, that is, clients == 1.

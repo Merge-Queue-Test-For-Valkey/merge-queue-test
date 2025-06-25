@@ -124,7 +124,7 @@ start_server {tags {"maxmemory external:skip"}} {
             }
 
             foreach rr $clients {
-                $rr subscribe bla
+                $rr subscribe blah
             }
 
             # Generate client output buffers via PUBLISH until we can observe some effect on 
@@ -132,7 +132,7 @@ start_server {tags {"maxmemory external:skip"}} {
             set bigstr [string repeat x 100000]
             set t [clock seconds]
             while {![check_eviction_test $client_eviction] && [expr [clock seconds] - $t] < 20} {
-                if {[catch { r publish bla $bigstr } err]} {
+                if {[catch { r publish blah $bigstr } err]} {
                     if $::verbose {
                         puts "Error publishing: $err"
                     }
@@ -206,7 +206,7 @@ start_server {tags {"maxmemory external:skip"}} {
             }
             # If we add the same number of keys already added again and
             # the policy is allkeys-* we should still be under the limit.
-            # Otherwise we should see an error reported by Server.
+            # Otherwise, we should see an error reported by Server.
             set err 0
             for {set j 0} {$j < $numkeys} {incr j} {
                 if {[catch {r set [randomKey] x} e]} {
@@ -467,7 +467,7 @@ start_server {tags {"maxmemory external:skip io-threads:skip"}} {
         }
 
         # we need to wait one second for the client querybuf excess memory to be
-        # trimmed by cron, otherwise the INFO used_memory and CONFIG maxmemory
+        # trimmed by cron; otherwise, the INFO used_memory and CONFIG maxmemory
         # below (on slow machines) won't be "atomic" and won't trigger eviction.
         after 1100
 

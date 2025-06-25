@@ -45,7 +45,7 @@ rax *TrackingTable = NULL;
 rax *PrefixTable = NULL;
 uint64_t TrackingTableTotalItems = 0; /* Total number of IDs stored across
                                          the whole tracking table. This gives
-                                         an hint about the total memory we
+                                         a hint about the total memory we
                                          are using server side for CSC. */
 robj *TrackingChannelName;
 
@@ -61,7 +61,7 @@ typedef struct bcastState {
 /* Remove the tracking state from the client 'c'. Note that there is not much
  * to do for us here, if not to decrement the counter of the clients in
  * tracking mode, because we just store the ID of the client in the tracking
- * table, so we'll remove the ID reference in a lazy way. Otherwise when a
+ * table, so we'll remove the ID reference in a lazy way. Otherwise, when a
  * client with many entries in the table is removed, it would cost a lot of
  * time to do the cleanup. */
 void disableTracking(client *c) {
@@ -112,7 +112,7 @@ static int stringCheckPrefix(unsigned char *s1, size_t s1_len, unsigned char *s2
 /* Check if any of the provided prefixes collide with one another or
  * with an existing prefix for the client. A collision is defined as two
  * prefixes that will emit an invalidation for the same key. If no prefix
- * collision is found, 1 is return, otherwise 0 is returned and the client
+ * collision is found, 1 is return; otherwise, 0 is returned and the client
  * has an error emitted describing the error. */
 int checkPrefixCollisionsOrReply(client *c, robj **prefixes, size_t numprefix) {
     for (size_t i = 0; i < numprefix; i++) {
@@ -312,7 +312,7 @@ void sendTrackingMessage(client *c, char *keyname, size_t keylen, int proto) {
          * that addReplyPubsubMessage() will not take a reference. */
         addReplyPubsubMessage(c, TrackingChannelName, NULL, shared.messagebulk);
     } else {
-        /* If are here, the client is not using RESP3, nor is
+        /* If are here, the client is neither using RESP3, nor is
          * redirecting to another client. We can't send anything to
          * it since RESP2 does not support push messages in the same
          * connection. */

@@ -54,7 +54,7 @@ static double avg_ttl_factor[16] = {0.98, 0.9604, 0.941192, 0.922368, 0.903921, 
  * This function will try to expire the key-value entry 'val'.
  *
  * If the key is found to be expired, it is removed from the database and
- * 1 is returned. Otherwise no operation is performed and 0 is returned.
+ * 1 is returned. Otherwise, no operation is performed and 0 is returned.
  *
  * When a key is expired, server.stat_expiredkeys is incremented.
  *
@@ -77,7 +77,7 @@ int activeExpireCycleTryExpire(serverDb *db, robj *val, long long now) {
 }
 
 /* Try to expire a few timed out keys. The algorithm used is adaptive and
- * will use few CPU cycles if there are few expiring keys, otherwise
+ * will use few CPU cycles if there are few expiring keys; otherwise,
  * it will get more aggressive to avoid that too much memory is used by
  * keys that can be removed from the keyspace.
  *

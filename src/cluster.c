@@ -77,7 +77,7 @@ unsigned int keyHashSlot(char *key, int keylen) {
 
 /* If it can be inferred that the given glob-style pattern, as implemented in
  * stringmatchlen() in util.c, only can match keys belonging to a single slot,
- * that slot is returned. Otherwise -1 is returned. */
+ * that slot is returned. Otherwise, -1 is returned. */
 int patternHashSlot(char *pattern, int length) {
     int s = -1; /* index of the first '{' */
 
@@ -149,7 +149,7 @@ void createDumpPayload(rio *payload, robj *o, robj *key, int dbid) {
 
 /* Verify that the RDB version of the dump payload matches the one of this
  * instance and that the checksum is ok.
- * If the DUMP payload looks valid C_OK is returned, otherwise C_ERR
+ * If the DUMP payload looks valid C_OK is returned; otherwise, C_ERR
  * is returned. If rdbver_ptr is not NULL, its populated with the value read
  * from the input buffer. */
 int verifyDumpPayload(unsigned char *p, size_t len, uint16_t *rdbver_ptr) {
@@ -321,7 +321,7 @@ typedef struct migrateCachedSocket {
  *
  * This function is responsible of sending errors to the client if a
  * connection can't be established. In this case -1 is returned.
- * Otherwise on success the socket is returned, and the caller should not
+ * Otherwise, on success the socket is returned, and the caller should not
  * attempt to free it after usage.
  *
  * If the caller detects an error while using the socket, migrateCloseSocket()
@@ -392,7 +392,7 @@ void migrateCloseSocket(robj *host, robj *port) {
     sdsfree(name);
 }
 
-void migrateCloseTimedoutSockets(void) {
+void migrateCloseTimedOutSockets(void) {
     dictIterator *di = dictGetSafeIterator(server.migrate_cached_sockets);
     dictEntry *de;
 
@@ -1090,7 +1090,7 @@ clusterNode *getNodeByQuery(client *c, int *error_code) {
 
     /* If we are migrating or importing this slot, we need to check
      * if we have all the keys in the request (the only way we
-     * can safely serve the request, otherwise we return a TRYAGAIN
+     * can safely serve the request; otherwise, we return a TRYAGAIN
      * error). To do so we set the importing/migrating state and
      * increment a counter for every missing key. */
     if (clusterNodeIsPrimary(myself) || c->flag.readonly) {
@@ -1111,7 +1111,7 @@ clusterNode *getNodeByQuery(client *c, int *error_code) {
      *
      *   1. Go over all the keys to count existing keys and missing keys that we
      *      need for TRYAGAIN and ASK redirects.
-     *   2. Check for some commands that are forbiddedn during slot migration.
+     *   2. Check for some commands that are forbidden during slot migration.
      *
      * Skip this if we're not importing or migrating this slot. */
     if (!migrating_slot && !importing_slot) goto after_checking_each_key;
@@ -1335,7 +1335,7 @@ void clusterRedirectClient(client *c, clusterNode *n, int hashslot, int error_co
  *
  * If the client is found to be blocked into a hash slot this node no
  * longer handles, the client is sent a redirection error, and the function
- * returns 1. Otherwise 0 is returned and no operation is performed. */
+ * returns 1. Otherwise, 0 is returned and no operation is performed. */
 int clusterRedirectBlockedClientIfNeeded(client *c) {
     clusterNode *myself = getMyClusterNode();
     if (c->flag.blocked && (c->bstate->btype == BLOCKED_LIST || c->bstate->btype == BLOCKED_ZSET ||
@@ -1373,7 +1373,7 @@ int clusterRedirectBlockedClientIfNeeded(client *c) {
 
             /* We send an error and unblock the client if:
              * 1) The slot is unassigned, emitting a cluster down error.
-             * 2) The slot is not handled by this node, nor being imported. */
+             * 2) The slot is neither handled by this node, nor being imported. */
             if (node != myself && getImportingSlotSource(slot) == NULL) {
                 if (node == NULL) {
                     clusterRedirectClient(c, NULL, 0, CLUSTER_REDIR_DOWN_UNBOUND);

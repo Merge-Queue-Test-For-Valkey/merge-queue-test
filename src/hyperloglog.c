@@ -522,7 +522,7 @@ int hllPatLen(unsigned char *ele, size_t elesize, long *regp) {
  * automatically since they are implicitly null terminated.
  *
  * The function always succeed, however if as a result of the operation
- * the approximated cardinality changed, 1 is returned. Otherwise 0
+ * the approximated cardinality changed, 1 is returned. Otherwise, 0
  * is returned. */
 int hllDenseSet(uint8_t *registers, long index, uint8_t count) {
     uint8_t oldcount;
@@ -1048,7 +1048,7 @@ double hllTau(double x) {
  * representing the String object holding the HLL representation.
  *
  * If the sparse representation of the HLL object is not valid, the integer
- * pointed by 'invalid' is set to non-zero, otherwise it is left untouched.
+ * pointed by 'invalid' is set to non-zero; otherwise, it is left untouched.
  *
  * hllCount() supports a special internal-only encoding of HLL_RAW, that
  * is, hdr->registers will point to an uint8_t array of HLL_REGISTERS element.
@@ -1334,7 +1334,7 @@ void hllMergeDense(uint8_t *reg_raw, const uint8_t *reg_dense) {
  * or in some other way.
  *
  * If the HyperLogLog is sparse and is found to be invalid, C_ERR
- * is returned, otherwise the function always succeeds. */
+ * is returned; otherwise, the function always succeeds. */
 int hllMerge(uint8_t *max, robj *hll) {
     struct hllhdr *hdr = hll->ptr;
     int i;
@@ -1600,7 +1600,7 @@ robj *createHLLObject(void) {
 }
 
 /* Check if the object is a String with a valid HLL representation.
- * Return C_OK if this is true, otherwise reply to the client
+ * Return C_OK if this is true; otherwise, reply to the client
  * with an error and return C_ERR. */
 int isHLLObjectOrReply(client *c, robj *o) {
     struct hllhdr *hdr;
@@ -1629,7 +1629,7 @@ invalid:
     return C_ERR;
 }
 
-/* PFADD var ele ele ele ... ele => :0 or :1 */
+/* PFADD var ele ele ... ele => :0 or :1 */
 void pfaddCommand(client *c) {
     robj *o = lookupKeyWrite(c->db, c->argv[1]);
     struct hllhdr *hdr;
@@ -1686,7 +1686,7 @@ void pfcountCommand(client *c) {
         for (j = 1; j < c->argc; j++) {
             /* Check type and size. */
             robj *o = lookupKeyRead(c->db, c->argv[j]);
-            if (o == NULL) continue; /* Assume empty HLL for non existing var.*/
+            if (o == NULL) continue; /* Assume empty HLL for nonexistent var.*/
             if (isHLLObjectOrReply(c, o) != C_OK) return;
 
             /* Merge with this HLL with our 'max' HLL by setting max[i]
@@ -1715,7 +1715,7 @@ void pfcountCommand(client *c) {
      * expired, which is what matters here. */
     o = lookupKeyRead(c->db, c->argv[1]);
     if (o == NULL) {
-        /* No key? Cardinality is zero since no element was added, otherwise
+        /* No key? Cardinality is zero since no element was added; otherwise,
          * we would have a key as HLLADD creates it as a side effect. */
         addReply(c, shared.czero);
     } else {
@@ -1774,7 +1774,7 @@ void pfmergeCommand(client *c) {
     for (j = 1; j < c->argc; j++) {
         /* Check type and size. */
         robj *o = lookupKeyRead(c->db, c->argv[j]);
-        if (o == NULL) continue; /* Assume empty HLL for non existing var. */
+        if (o == NULL) continue; /* Assume empty HLL for nonexistent var. */
         if (isHLLObjectOrReply(c, o) != C_OK) return;
 
         /* If at least one involved HLL is dense, use the dense representation
@@ -1857,7 +1857,7 @@ void pfselftestCommand(client *c) {
      * structure are accessible and that setting their values both result in
      * the correct value to be retained and not affect adjacent values. */
     for (j = 0; j < HLL_TEST_CYCLES; j++) {
-        /* Set the HLL counters and an array of unsigned byes of the
+        /* Set the HLL counters and an array of unsigned bytes of the
          * same size to the same set of random values. */
         for (i = 0; i < HLL_REGISTERS; i++) {
             unsigned int r = rand() & HLL_REGISTER_MAX;

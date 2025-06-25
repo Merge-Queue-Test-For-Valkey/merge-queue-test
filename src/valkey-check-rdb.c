@@ -562,7 +562,7 @@ void rdbCheckSetError(const char *fmt, ...) {
     rdbstate.error_set = 1;
 }
 
-/* During RDB check we setup a special signal handler for memory violations
+/* During RDB check we set up a special signal handler for memory violations
  * and similar conditions, so that we can log the offending part of the RDB
  * if the crash is due to broken content. */
 void rdbCheckHandleCrash(int sig, siginfo_t *info, void *secret) {
@@ -587,7 +587,7 @@ void rdbCheckSetupSignals(void) {
     sigaction(SIGABRT, &act, NULL);
 }
 
-/* Check the specified RDB file. Return 0 if the RDB looks sane, otherwise
+/* Check the specified RDB file. Return 0 if the RDB looks sane; otherwise,
  * 1 is returned.
  * The file is specified as a filename in 'rdbfilename' if 'fp' is NULL,
  * otherwise the already open file 'fp' is checked. */
@@ -856,7 +856,7 @@ checkRdbUsage:
  *
  * When called with fp = NULL, the function never returns, but exits with the
  * status code according to success (RDB is sane) or error (RDB is corrupted).
- * Otherwise if called with a non NULL fp, the function returns C_OK or
+ * Otherwise, if called with a non NULL fp, the function returns C_OK or
  * C_ERR depending on the success or failure. */
 int redis_check_rdb_main(int argc, char **argv, FILE *fp) {
     parseCheckRdbOptions(argc, argv, fp);

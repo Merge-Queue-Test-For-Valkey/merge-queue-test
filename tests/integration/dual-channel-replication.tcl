@@ -198,7 +198,7 @@ start_server {tags {"dual-channel-replication external:skip"}} {
             set primary_port [srv 0 port]
 
             $primary config set repl-diskless-sync yes
-            # Set primary shared replication buffer size to a bit more then the size of 
+            # Set primary shared replication buffer size to a bit more than the size of
             # a replication buffer block.
             $primary config set client-output-buffer-limit "replica 1100k 0 0"
             $primary config set dual-channel-replication-enabled $enable
@@ -935,7 +935,7 @@ start_server {tags {"dual-channel-replication external:skip"}} {
                     [status $primary sync_full] == 2 &&
                     ([status $primary sync_partial_ok] == 2)
                 } else {
-                    fail "Sync session interapted\n
+                    fail "Sync session interrupted\n
                         sync_full:[status $primary sync_full]\n
                         sync_partial_ok:[status $primary sync_partial_ok]"
                 }

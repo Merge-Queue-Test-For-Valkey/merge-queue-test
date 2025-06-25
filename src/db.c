@@ -210,7 +210,7 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
  * function.
  *
  * If the update_if_existing argument is false, the program is aborted
- * if the key already exists, otherwise, it can fall back to dbOverwrite. */
+ * if the key already exists; otherwise, it can fall back to dbOverwrite. */
 static void dbAddInternal(serverDb *db, robj *key, robj **valref, int update_if_existing) {
     int dict_index = getKVStoreIndexForKey(key->ptr);
     void **oldref = NULL;
@@ -253,7 +253,7 @@ int getKeySlot(sds key) {
      *
      * This optimization is only used when current_client flag `CLIENT_EXECUTING_COMMAND` is set.
      * It only gets set during the execution of command under `call` method. Other flows requesting
-     * the key slot would fallback to keyHashSlot.
+     * the key slot would fall back to keyHashSlot.
      *
      * Modules and scripts executed on the primary may get replicated as multi-execs that operate on multiple slots,
      * so we must always recompute the slot for commands coming from the primary.
@@ -282,7 +282,7 @@ int getKeySlot(sds key) {
  * give more control to the caller, nor will signal the key as ready
  * since it is not useful in this context.
  *
- * The function returns 1 if the key was added to the database, otherwise 0 is returned.
+ * The function returns 1 if the key was added to the database; otherwise, 0 is returned.
  */
 int dbAddRDBLoad(serverDb *db, sds key, robj **valref) {
     int dict_index = getKVStoreIndexForKey(key);
@@ -540,7 +540,7 @@ int dbDelete(serverDb *db, robj *key) {
  *
  * If the object is found in one of the above conditions (or both) by the
  * function, an unshared / not-encoded copy of the string object is stored
- * at 'key' in the specified 'db'. Otherwise the object 'o' itself is
+ * at 'key' in the specified 'db'. Otherwise, the object 'o' itself is
  * returned.
  *
  * USAGE:
@@ -614,7 +614,7 @@ long long emptyDbStructure(serverDb **dbarray, int dbnum, int async, void(callba
  * to specify that we do not want to delete the functions.
  *
  * On success the function returns the number of keys removed from the
- * database(s). Otherwise -1 is returned in the specific case the
+ * database(s). Otherwise, -1 is returned in the specific case the
  * DB number is out of range, and errno is set to EINVAL. */
 long long emptyData(int dbnum, int flags, void(callback)(hashtable *)) {
     int async = (flags & EMPTYDB_ASYNC);
@@ -740,11 +740,11 @@ void signalFlushedDb(int dbid, int async) {
 /* Return the set of flags to use for the emptyData() call for FLUSHALL
  * and FLUSHDB commands.
  *
- * sync: flushes the database in an sync manner.
+ * sync: flushes the database in a sync manner.
  * async: flushes the database in an async manner.
  * no option: determine sync or async according to the value of lazyfree-lazy-user-flush.
  *
- * On success C_OK is returned and the flags are stored in *flags, otherwise
+ * On success C_OK is returned and the flags are stored in *flags; otherwise,
  * C_ERR is returned and the function sends an error to the client. */
 int getFlushCommandFlags(client *c, int *flags) {
     /* Parse the optional ASYNC option. */
@@ -790,7 +790,7 @@ void flushdbCommand(client *c) {
     server.dirty += emptyData(c->db->id, flags | EMPTYDB_NOFUNCTIONS, NULL);
 
     /* Without the forceCommandPropagation, when DB was already empty,
-     * FLUSHDB will not be replicated nor put into the AOF. */
+     * FLUSHDB will neither be replicated nor put into the AOF. */
     forceCommandPropagation(c, PROPAGATE_REPL | PROPAGATE_AOF);
 
     addReply(c, shared.ok);
@@ -813,7 +813,7 @@ void flushallCommand(client *c) {
     flushAllDataAndResetRDB(flags | EMPTYDB_NOFUNCTIONS);
 
     /* Without the forceCommandPropagation, when DBs were already empty,
-     * FLUSHALL will not be replicated nor put into the AOF. */
+     * FLUSHALL will neither be replicated nor put into the AOF. */
     forceCommandPropagation(c, PROPAGATE_REPL | PROPAGATE_AOF);
 
     addReply(c, shared.ok);
@@ -1042,7 +1042,7 @@ void hashtableScanCallback(void *privdata, void *entry) {
 
 /* Try to parse a SCAN cursor stored at buffer 'buf':
  * if the cursor is valid, store it as unsigned integer into *cursor and
- * returns C_OK. Otherwise return C_ERR and send an error to the
+ * returns C_OK. Otherwise, return C_ERR and send an error to the
  * client. */
 int parseScanCursorOrReply(client *c, sds buf, unsigned long long *cursor) {
     if (!string2ull(buf, sdslen(buf), cursor)) {
@@ -1085,7 +1085,7 @@ char *getObjectTypeName(robj *o) {
 }
 
 /* This command implements SCAN, HSCAN and SSCAN commands.
- * If object 'o' is passed, then it must be a Hash, Set or Zset object, otherwise
+ * If object 'o' is passed, then it must be a Hash, Set or Zset object; otherwise,
  * if 'o' is NULL the command will operate on the dictionary associated with
  * the current database.
  *
@@ -1210,7 +1210,7 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
          * 4. data.pattern: the pattern string;
          * 5. data.sampled: the maxiteration limit is there in case we're
          * working on an empty dict, one with a lot of empty buckets, and
-         * for the buckets are not empty, we need to limit the spampled number
+         * for the buckets are not empty, we need to limit the sampled number
          * to prevent a long hang time caused by filtering too many keys;
          * 6. data.only_keys: to control whether values will be returned or
          * only keys are returned. */
@@ -1632,10 +1632,10 @@ void scanDatabaseForDeletedKeys(serverDb *emptied, serverDb *replaced_with) {
 /* Swap two databases at runtime so that all clients will magically see
  * the new database even if already connected. Note that the client
  * structure c->db points to a given DB, so we need to be smarter and
- * swap the underlying referenced structures, otherwise we would need
+ * swap the underlying referenced structures; otherwise, we would need
  * to fix all the references to the DB structure.
  *
- * Returns C_ERR if at least one of the DB ids are out of range, otherwise
+ * Returns C_ERR if at least one of the DB ids are out of range; otherwise,
  * C_OK is returned. */
 int dbSwapDatabases(int id1, int id2) {
     if (id1 < 0 || id1 >= server.dbnum || id2 < 0 || id2 >= server.dbnum) return C_ERR;
@@ -1772,7 +1772,7 @@ int removeExpire(serverDb *db, robj *key) {
 }
 
 /* Set an expire to the specified key. If the expire is set in the context
- * of an user calling a command 'c' is the client, otherwise 'c' is set
+ * of an user calling a command 'c' is the client; otherwise, 'c' is set
  * to NULL. The 'when' parameter is the absolute unix time in milliseconds
  * after which the key will no longer be considered valid. */
 robj *setExpire(client *c, serverDb *db, robj *key, long long when) {
@@ -2059,7 +2059,7 @@ static int dbExpandSkipSlot(int slot) {
  * if try_expand is non-zero, `hashtableTryExpand` is used else `hashtableExpand`.
  *
  * Returns C_OK or C_ERR. C_OK response is for successful expansion. C_ERR
- * signifies failure in allocation if try_expand is non-zero. Otherwise it
+ * signifies failure in allocation if try_expand is non-zero. Otherwise, it
  * signifies that no expansion was performed.
  */
 static int dbExpandGeneric(kvstore *kvs, uint64_t db_size, int try_expand) {
@@ -2311,7 +2311,7 @@ int getKeysFromCommandWithSpecs(struct serverCommand *cmd,
         int ret = getKeysUsingKeySpecs(cmd, argv, argc, search_flags, result);
         if (ret >= 0) return ret;
         /* If the specs returned with an error (probably an INVALID or INCOMPLETE spec),
-         * fallback to the callback method. */
+         * fall back to the callback method. */
     }
 
     /* Resort to getkeys callback methods. */
@@ -2387,7 +2387,7 @@ int getChannelsFromCommand(struct serverCommand *cmd, robj **argv, int argc, get
     if (cmd->flags & CMD_MODULE_GETCHANNELS) {
         return moduleGetCommandChannelsViaAPI(cmd, argv, argc, result);
     }
-    /* Otherwise check the channel spec table */
+    /* Otherwise, check the channel spec table */
     for (ChannelSpecs *spec = commands_with_channels; spec != NULL; spec += 1) {
         if (cmd->proc == spec->proc) {
             int start = spec->start;
@@ -2471,7 +2471,7 @@ int getKeysUsingLegacyRangeSpec(struct serverCommand *cmd, robj **argv, int argc
  * table, according to the command name in argv[0].
  *
  * This function uses the command table if a command-specific helper function
- * is not required, otherwise it calls the command-specific function. */
+ * is not required; otherwise, it calls the command-specific function. */
 int getKeysFromCommand(struct serverCommand *cmd, robj **argv, int argc, getKeysResult *result) {
     if (cmd->flags & CMD_MODULE_GETKEYS) {
         return moduleGetCommandKeysViaAPI(cmd, argv, argc, result);

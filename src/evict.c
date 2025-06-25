@@ -76,7 +76,7 @@ unsigned int getLRUClock(void) {
 /* This function is used to obtain the current LRU clock.
  * If the current resolution is lower than the frequency we refresh the
  * LRU clock (as it should be in production servers) we return the
- * precomputed value, otherwise we need to resort to a system call. */
+ * precomputed value; otherwise, we need to resort to a system call. */
 unsigned int LRU_CLOCK(void) {
     unsigned int lruclock;
     if (1000 / server.hz <= LRU_CLOCK_RESOLUTION) {
@@ -210,7 +210,7 @@ int evictionPoolPopulate(serverDb *db, kvstore *samplekvs, struct evictionPoolEn
         /* Try to reuse the cached SDS string allocated in the pool entry,
          * because allocating and deallocating this object is costly
          * (according to the profiler, not my fantasy. Remember:
-         * premature optimization bla bla bla. */
+         * premature optimization blah, blah, blah. */
         int klen = sdslen(key);
         if (klen > EVPOOL_CACHED_SDS_SIZE) {
             pool[k].key = sdsdup(key);
@@ -614,7 +614,7 @@ int performEvictions(void) {
                     pool[k].key = NULL;
                     pool[k].idle = 0;
 
-                    /* If the key exists, is our pick. Otherwise it is
+                    /* If the key exists, is our pick. Otherwise, it is
                      * a ghost and we need to try the next element. */
                     if (found) {
                         valkey = entry;

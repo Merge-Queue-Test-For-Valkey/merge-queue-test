@@ -211,7 +211,7 @@ robj *createEmbeddedStringObject(const char *ptr, size_t len) {
 }
 
 /* Create a string object with EMBSTR encoding if it is smaller than
- * OBJ_ENCODING_EMBSTR_SIZE_LIMIT, otherwise the RAW encoding is
+ * OBJ_ENCODING_EMBSTR_SIZE_LIMIT; otherwise, the RAW encoding is
  * used.
  *
  * The current limit of 44 is chosen so that the biggest string object
@@ -375,7 +375,7 @@ robj *createStringObjectFromLongLongWithSds(long long value) {
 
 /* Create a string object from a long double. If humanfriendly is non-zero
  * it does not use exponential format and trims trailing zeroes at the end,
- * however this results in loss of precision. Otherwise exp format is used
+ * however this results in loss of precision. Otherwise, exp format is used
  * and the output of snprintf() is not modified.
  *
  * The 'humanfriendly' option is used for INCRBYFLOAT and HINCRBYFLOAT. */
@@ -927,7 +927,7 @@ int collateStringObjects(const robj *a, const robj *b) {
 }
 
 /* Equal string objects return 1 if the two objects are the same from the
- * point of view of a string comparison, otherwise 0 is returned. Note that
+ * point of view of a string comparison; otherwise, 0 is returned. Note that
  * this function is faster than checking for (compareStringObject(a,b) == 0)
  * because it can perform some more optimization. */
 int equalStringObjects(robj *a, robj *b) {
@@ -1438,25 +1438,25 @@ sds getMemoryDoctorReport(void) {
             num_reports++;
         }
 
-        /* Fragmentation is higher than 1.4 and 10MB ?*/
+        /* Fragmentation is greater than 1.4 and 10MB ?*/
         if (mh->total_frag > 1.4 && mh->total_frag_bytes > 10 << 20) {
             high_frag = 1;
             num_reports++;
         }
 
-        /* External fragmentation is higher than 1.1 and 10MB? */
+        /* External fragmentation is greater than 1.1 and 10MB? */
         if (mh->allocator_frag > 1.1 && mh->allocator_frag_bytes > 10 << 20) {
             high_alloc_frag = 1;
             num_reports++;
         }
 
-        /* Allocator rss is higher than 1.1 and 10MB ? */
+        /* Allocator rss is greater than 1.1 and 10MB ? */
         if (mh->allocator_rss > 1.1 && mh->allocator_rss_bytes > 10 << 20) {
             high_alloc_rss = 1;
             num_reports++;
         }
 
-        /* Non-Allocator rss is higher than 1.1 and 10MB ? */
+        /* Non-Allocator rss is greater than 1.1 and 10MB ? */
         if (mh->rss_extra > 1.1 && mh->rss_extra_bytes > 10 << 20) {
             high_proc_rss = 1;
             num_reports++;
@@ -1503,7 +1503,7 @@ sds getMemoryDoctorReport(void) {
                        "peak, and if the Valkey instance Resident Set Size (RSS) is currently bigger than expected, "
                        "the memory will be used as soon as you fill the Valkey instance with more data. If the memory "
                        "peak was only occasional and you want to try to reclaim memory, please try the MEMORY PURGE "
-                       "command, otherwise the only other option is to shutdown and restart the instance.\n\n");
+                       "command; otherwise, the only other option is to shutdown and restart the instance.\n\n");
         }
         if (high_frag) {
             s = sdscatprintf(
@@ -1589,7 +1589,7 @@ int objectSetLRUOrLFU(robj *val, long long lfu_freq, long long lru_idle, long lo
         /* If the LRU field underflows (since lru_clock is a wrapping clock),
          * we need to make it positive again. This will be handled by the unwrapping
          * code in estimateObjectIdleTime. I.e. imagine a day when lru_clock
-         * wrap arounds (happens once in some 6 months), and becomes a low
+         * wraps around (happens once in some 6 months), and becomes a low
          * value, like 10, an lru_idle of 1000 should be near LRU_CLOCK_MAX. */
         if (lru_abs < 0) lru_abs += LRU_CLOCK_MAX;
         val->lru = lru_abs;

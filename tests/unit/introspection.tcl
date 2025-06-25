@@ -1084,7 +1084,7 @@ start_server {tags {"introspection"}} {
             lappend backups $c [lindex [r config get $c] 1]
         }
 
-        # multi config set and veirfy
+        # multi config set and verify
         assert_equal [eval "r config set $some_configs"] "OK"
         dict for {c val} $some_configs {
             assert_equal [lindex [r config get $c] 1] $val
@@ -1105,7 +1105,7 @@ start_server {tags {"introspection"}} {
         set qbl_backup [lindex [r config get client-query-buffer-limit] 1]
         # Set some value to maxmemory
         assert_equal [r config set maxmemory 10000002] "OK"
-        # Set another value to maxmeory together with another invalid config
+        # Set another value to maxmemory together with another invalid config
         assert_error "ERR CONFIG SET failed (possibly related to argument 'maxmemory-clients') - percentage argument must be less or equal to 100" {
             r config set maxmemory 10000001 maxmemory-clients 200% client-query-buffer-limit invalid
         }
@@ -1231,13 +1231,13 @@ start_server {tags {"introspection"}} {
         catch {exec src/valkey-server --port --loglevel verbose} err
         assert_match {*'port "--loglevel" "verbose"'*wrong number of arguments*} $err
 
-        # Take `--bla` as the port option value.
-        catch {exec src/valkey-server --port --bla --loglevel verbose} err
-        assert_match {*'port "--bla"'*argument couldn't be parsed into an integer*} $err
+        # Take `--blah` as the port option value.
+        catch {exec src/valkey-server --port --blah --loglevel verbose} err
+        assert_match {*'port "--blah"'*argument couldn't be parsed into an integer*} $err
 
-        # Take `--bla` as the loglevel option value.
-        catch {exec src/valkey-server --logfile --my--log--file --loglevel --bla} err
-        assert_match {*'loglevel "--bla"'*argument(s) must be one of the following*} $err
+        # Take `--blah` as the loglevel option value.
+        catch {exec src/valkey-server --logfile --my--log--file --loglevel --blah} err
+        assert_match {*'loglevel "--blah"'*argument(s) must be one of the following*} $err
 
         # Using MULTI_ARG's own check, empty option value
         catch {exec src/valkey-server --shutdown-on-sigint} err

@@ -129,7 +129,7 @@ static char **allow_lists[] = {
 /* Deny list contains elements which we know we do not want to add to globals
  * and there is no need to print a warning message form them. We will print a
  * log message only if an element was added to the globals and the element is
- * not on the allow list nor on the back list. */
+ * neither on the allow list nor on the back list. */
 static char *deny_list[] = {
     "dofile",
     "loadfile",
@@ -1336,7 +1336,7 @@ static int luaNewIndexAllowList(lua_State *lua) {
         }
         if (!*c) {
             serverLog(LL_WARNING,
-                      "A key '%s' was added to Lua globals which is not on the globals allow list nor listed on the "
+                      "A key '%s' was added to Lua globals which is neither on the globals allow list nor listed on the "
                       "deny list.",
                       variable_name);
         }
@@ -1735,7 +1735,7 @@ void luaCallFunction(scriptRunCtx *run_ctx,
     int delhook = 0;
 
     /* We must set it before we set the Lua hook, theoretically the
-     * Lua hook might be called wheneven we run any Lua instruction
+     * Lua hook might be called whenever we run any Lua instruction
      * such as 'luaSetGlobalArray' and we want the run_ctx to be available
      * each time the Lua hook is invoked. */
     luaSaveOnRegistry(lua, REGISTRY_RUN_CTX_NAME, run_ctx);

@@ -744,7 +744,7 @@ static void tlsHandleEvent(tls_connection *conn, int mask) {
          * asking us to do the reverse: never fire the writable event
          * after the readable. In such a case, we invert the calls.
          * This is useful when, for instance, we want to do things
-         * in the beforeSleep() hook, like fsynching a file to disk,
+         * in the beforeSleep() hook, like fsyncing a file to disk,
          * before replying to a client. */
         int invert = conn->c.flags & CONN_FLAG_WRITE_BARRIER;
 
@@ -942,7 +942,7 @@ static int connTLSWritev(connection *conn_, const struct iovec *iov, int iovcnt)
      * However, in case when last write failed we still have to repeat sending last_failed_write_data_len
      * bytes. Because of openssl implementation we cannot repeat sending writes with length smaller than
      * the last failed write (https://docs.openssl.org/master/man3/SSL_write) so in case the first io buffer
-     * does not provide at least the same amount of bytes as previous failed write, we will have to fallback to
+     * does not provide at least the same amount of bytes as previous failed write, we will have to fall back to
      * memory copy to a static buffer before calling SSL_write. */
     if (iov_bytes_len > NET_MAX_WRITES_PER_EVENT && iovcnt > 0 && iov[0].iov_len >= conn->last_failed_write_data_len) {
         ssize_t tot_sent = 0;

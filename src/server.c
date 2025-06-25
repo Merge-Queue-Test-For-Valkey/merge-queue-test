@@ -175,7 +175,7 @@ void filterInvalidLogfmtChar(char *safemsg, size_t safemsglen, const char *msg) 
     safemsg[index] = '\0';
 }
 
-/* Low level logging. To use only for very big messages, otherwise
+/* Low level logging. To use only for very big messages; otherwise,
  * serverLog() is to prefer. */
 void serverLogRaw(int level, const char *msg) {
     const int syslogLevelMap[] = {LOG_DEBUG, LOG_INFO, LOG_NOTICE, LOG_WARNING};
@@ -398,8 +398,8 @@ int hashtableSdsKeyCompare(const void *key1, const void *key2) {
     return sdslen(sds1) != sdslen(sds2) || sdscmp(sds1, sds2);
 }
 
-/* A case insensitive version used for the command lookup table and other
- * places where case insensitive non binary-safe comparison is needed. */
+/* A case-insensitive version used for the command lookup table and other
+ * places where case-insensitive non binary-safe comparison is needed. */
 int dictSdsKeyCaseCompare(const void *key1, const void *key2) {
     return strcasecmp(key1, key2) == 0;
 }
@@ -469,7 +469,7 @@ int dictCStrKeyCompare(const void *key1, const void *key2) {
     return memcmp(key1, key2, l1) == 0;
 }
 
-/* Dict case insensitive compare function for null terminated string */
+/* Dict case-insensitive compare function for null terminated string */
 int dictCStrKeyCaseCompare(const void *key1, const void *key2) {
     return strcasecmp(key1, key2) == 0;
 }
@@ -760,7 +760,7 @@ dictType migrateCacheDictType = {
     NULL               /* allow to expand */
 };
 
-/* Dict for for case-insensitive search using null terminated C strings.
+/* Dict for case-insensitive search using null terminated C strings.
  * The keys stored in dict are sds though. */
 dictType stringSetDictType = {
     dictCStrCaseHash,       /* hash function */
@@ -771,7 +771,7 @@ dictType stringSetDictType = {
     NULL                    /* allow to expand */
 };
 
-/* Dict for for case-insensitive search using null terminated C strings.
+/* Dict for case-insensitive search using null terminated C strings.
  * The key and value do not have a destructor. */
 dictType externalStringType = {
     dictCStrCaseHash,       /* hash function */
@@ -860,7 +860,7 @@ int isMutuallyExclusiveChildType(int type) {
 
 /* Returns true when we're inside a long command that yielded to the event loop. */
 int isInsideYieldingLongCommand(void) {
-    return scriptIsTimedout() || server.busy_module_yield_flags;
+    return scriptIsTimedOut() || server.busy_module_yield_flags;
 }
 
 /* Return true if this instance has persistence completely turned off:
@@ -1107,7 +1107,7 @@ void removeClientFromMemUsageBucket(client *c, int allow_eviction) {
  *
  * Note: This function filters clients of type no-evict, primary or replica regardless
  * of whether the eviction is enabled or not, so the memory usage we get from these
- * types of clients via the INFO command may be out of date.
+ * types of clients via the INFO command may be out-of-date.
  *
  * returns 1 if client eviction for this client is allowed, 0 otherwise.
  */
@@ -1274,7 +1274,7 @@ void databasesCron(void) {
     monitorActiveDefrag();
 
     /* Perform hash tables rehashing if needed, but only if there are no
-     * other processes saving the DB on disk. Otherwise rehashing is bad
+     * other processes saving the DB on disk. Otherwise, rehashing is bad
      * as will cause a lot of copy-on-write of memory pages. */
     if (!hasActiveChildProcess()) {
         /* We use global counters so if we stop the computation at a given
@@ -1352,7 +1352,7 @@ void updateCachedTime(int update_daylight_info) {
  * otherwise we need to update cache times so the same cached time will be used all over
  * the execution unit.
  * update_cached_time - if 0, will not update the cached time even if required.
- * us - if not zero, use this time for cached time, otherwise get current time. */
+ * us - if not zero, use this time for cached time; otherwise, get current time. */
 void enterExecutionUnit(int update_cached_time, long long us) {
     if (server.execution_nesting++ == 0 && update_cached_time) {
         if (us == 0) {
@@ -1428,7 +1428,7 @@ void cronUpdateMemoryStats(void) {
 
     run_with_period(100) {
         /* Sample the RSS and other metrics here since this is a relatively slow call.
-         * We must sample the zmalloc_used at the same time we take the rss, otherwise
+         * We must sample the zmalloc_used at the same time we take the rss; otherwise,
          * the frag ratio calculate may be off (ratio of two samples at different times) */
         server.cron_malloc_stats.process_rss = zmalloc_get_rss();
         server.cron_malloc_stats.zmalloc_used = zmalloc_used_memory();
@@ -1663,7 +1663,7 @@ long long serverCron(struct aeEventLoop *eventLoop, long long id, void *clientDa
 
     /* Cleanup expired MIGRATE cached sockets. */
     run_with_period(1000) {
-        migrateCloseTimedoutSockets();
+        migrateCloseTimedOutSockets();
     }
 
     /* Resize tracking keys table if needed. This is also done at every
@@ -2380,7 +2380,7 @@ int restartServer(client *c, int flags, mstime_t delay) {
     /* Close all file descriptors, with the exception of stdin, stdout, stderr
      * which are useful if we restart a server which is not daemonized. */
     for (j = 3; j < (int)server.maxclients + 1024; j++) {
-        /* Test the descriptor validity before closing it, otherwise
+        /* Test the descriptor validity before closing it; otherwise,
          * Valgrind issues a warning on close(). */
         if (fcntl(j, F_GETFD) != -1) close(j);
     }
@@ -2901,7 +2901,7 @@ void initServer(void) {
     server.rdb_pipe_numconns = 0;
     server.rdb_pipe_numconns_writing = 0;
     server.rdb_pipe_buff = NULL;
-    server.rdb_pipe_bufflen = 0;
+    server.rdb_pipe_buflen = 0;
     server.rdb_bgsave_scheduled = 0;
     server.child_info_pipe[0] = -1;
     server.child_info_pipe[1] = -1;
@@ -3237,7 +3237,7 @@ void setImplicitACLCategories(struct serverCommand *c) {
 
 /* Recursively populate the command structure.
  *
- * On success, the function return C_OK. Otherwise C_ERR is returned and we won't
+ * On success, the function return C_OK. Otherwise, C_ERR is returned and we won't
  * add this command in the commands dict. */
 int populateCommandStructure(struct serverCommand *c) {
     /* If the command marks with CMD_SENTINEL, it exists in sentinel. */
@@ -3648,7 +3648,7 @@ void postExecutionUnitOperations(void) {
 
     firePostExecutionUnitJobs();
 
-    /* If we are at the top-most call() and not inside a an active module
+    /* If we are at the top-most call() and not inside an active module
      * context (e.g. within a module timer) we can propagate what we accumulated. */
     propagatePendingCommands();
 
@@ -3972,7 +3972,7 @@ void rejectCommandFormat(client *c, const char *fmt, ...) {
     va_start(ap, fmt);
     sds s = sdscatvprintf(sdsempty(), fmt, ap);
     va_end(ap);
-    /* Make sure there are no newlines in the string, otherwise invalid protocol
+    /* Make sure there are no newlines in the string; otherwise, invalid protocol
      * is emitted (The args come from the user, they may contain any character). */
     sdsmapchars(s, "\r\n", "  ", 2);
     rejectCommandSds(c, s);
@@ -4018,7 +4018,7 @@ int commandCheckExistence(client *c, sds *err) {
             sdscatprintf(*err, "unknown command '%.128s', with args beginning with: %s", (char *)c->argv[0]->ptr, args);
         sdsfree(args);
     }
-    /* Make sure there are no newlines in the string, otherwise invalid protocol
+    /* Make sure there are no newlines in the string; otherwise, invalid protocol
      * is emitted (The args come from the user, they may contain any character). */
     sdsmapchars(*err, "\r\n", "  ", 2);
     return 0;
@@ -4092,10 +4092,10 @@ void unprepareCommand(client *c) {
  * other operations can be performed by the caller. Otherwise
  * if C_ERR is returned the client was destroyed (i.e. after QUIT). */
 int processCommand(client *c) {
-    if (!scriptIsTimedout()) {
+    if (!scriptIsTimedOut()) {
         /* Both EXEC and scripts call call() directly so there should be
          * no way in_exec or scriptIsRunning() is 1.
-         * That is unless lua_timedout, in which case client may run
+         * That is unless lua_timed out, in which case client may run
          * some commands. */
         serverAssert(!server.in_exec);
         serverAssert(!scriptIsRunning());
@@ -4156,7 +4156,7 @@ int processCommand(client *c) {
                 (c->cmd->proc == moduleCommand && !allowProtectedAction(server.enable_module_cmd, c))) {
                 rejectCommandFormat(c,
                                     "%s command not allowed. If the %s option is set to \"local\", "
-                                    "you can run it from a local connection, otherwise you need to set this option "
+                                    "you can run it from a local connection; otherwise, you need to set this option "
                                     "in the configuration file, and then restart the server.",
                                     c->cmd->proc == debugCommand ? "DEBUG" : "MODULE",
                                     c->cmd->proc == debugCommand ? "enable-debug-command" : "enable-module-command");
@@ -4300,7 +4300,7 @@ int processCommand(client *c) {
             return C_OK;
         }
 
-        /* Save out_of_memory result at command start, otherwise if we check OOM
+        /* Save out_of_memory result at command start; otherwise, if we check OOM
          * in the first write within script, memory used by lua stack and
          * arguments might interfere. We need to save it for EXEC and module
          * calls too, since these can call EVAL, but avoid saving it during an
@@ -4389,11 +4389,11 @@ int processCommand(client *c) {
 
     /* when a busy job is being done (script / module)
      * Only allow a limited number of commands.
-     * Note that we need to allow the transactions commands, otherwise clients
+     * Note that we need to allow the transactions commands; otherwise, clients
      * sending a transaction with pipelining without error checking, may have
      * the MULTI plus a few initial commands refused, then the timeout
      * condition resolves, and the bottom-half of the transaction gets
-     * executed, see Github PR #7022. */
+     * executed, see GitHub PR #7022. */
     if (isInsideYieldingLongCommand() && !(c->cmd->flags & CMD_ALLOW_BUSY)) {
         if (server.busy_module_yield_flags && server.busy_module_yield_reply) {
             rejectCommandFormat(c, "-BUSY %s", server.busy_module_yield_reply);
@@ -4672,7 +4672,7 @@ int finishShutdown(void) {
         rsiptr = rdbPopulateSaveInfo(&rsi);
         /* Keep the page cache since it's likely to restart soon */
         if (rdbSave(REPLICA_REQ_NONE, server.rdb_filename, rsiptr, RDBFLAGS_KEEP_CACHE) != C_OK) {
-            /* Ooops.. error saving! The best we can do is to continue
+            /* Oops.. error saving! The best we can do is to continue
              * operating. Note that if there was a background saving process,
              * in the next cron() the server will be notified that the background
              * saving aborted, handling special stuff like replicas pending for
@@ -7212,7 +7212,7 @@ __attribute__((weak)) int main(int argc, char **argv) {
     server.supervised = serverIsSupervised(server.supervised_mode);
     int background = server.daemonize && !server.supervised;
     if (background) {
-        /* We need to reset server.pid after daemonize(), otherwise the
+        /* We need to reset server.pid after daemonize(); otherwise, the
          * log printing role will always be the child. */
         daemonize();
         server.pid = getpid();

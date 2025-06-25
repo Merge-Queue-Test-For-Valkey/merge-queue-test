@@ -444,7 +444,7 @@ start_server {tags {"repl external:skip"} overrides {save {}}} {
             # to the slave.
             after 5000
 
-            # Stop the ability of the slave to process data by sendig
+            # Stop the ability of the slave to process data by sending
             # a script that will put it in BUSY state.
             $slave eval {for i=1,3000000000 do end} 0
 
@@ -1376,7 +1376,7 @@ test {replica can handle EINTR if use diskless load} {
             set res [wait_for_log_messages -1 {"*Loading DB in memory*"} 0 200 10]
             set loglines [lindex $res 1]
 
-            # Wait till we see the watchgod log line AFTER the loading started
+            # Wait till we see the watchdog log line AFTER the loading started
             wait_for_log_messages -1 {"*WATCHDOG TIMER EXPIRED*"} $loglines 200 10
 
             # Make sure we're still loading, and that there was just one full sync attempt

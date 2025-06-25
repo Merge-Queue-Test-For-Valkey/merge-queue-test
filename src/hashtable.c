@@ -987,7 +987,7 @@ static void prefetchBucketEntries(bucket *b) {
     }
 }
 
-/* Returns the child bucket if chained, otherwise the next bucket in the table. returns NULL if neither exists. */
+/* Returns the child bucket if chained; otherwise, the next bucket in the table. returns NULL if neither exists. */
 static bucket *getNextBucket(bucket *current_bucket, size_t bucket_index, hashtable *ht, int table_index) {
     bucket *next_bucket = NULL;
     if (current_bucket->chained) {
@@ -1322,7 +1322,7 @@ int hashtableFind(hashtable *ht, const void *key, void **found) {
  * NULL if not found. To get the entry, dereference the returned pointer. The
  * pointer can be used to replace the entry with an equivalent entry (same
  * key, same hash value), but note that the pointer may be invalidated by future
- * accesses to the hash table due to incermental rehashing, so use with care. */
+ * accesses to the hash table due to incremental rehashing, so use with care. */
 void **hashtableFindRef(hashtable *ht, const void *key) {
     if (hashtableSize(ht) == 0) return NULL;
     uint64_t hash = hashKey(ht, key);
@@ -1365,7 +1365,7 @@ int hashtableAddOrFind(hashtable *ht, void *entry, void **existing) {
  * argument, which can be stack-allocated. This position should then be used in
  * a call to hashtableInsertAtPosition.
  *
- * If the function returns 0, it means that an an entry with the given key
+ * If the function returns 0, it means that an entry with the given key
  * already exists in the table. If an 'existing' pointer is provided, it is
  * pointed to the existing entry with the matching key.
  *
@@ -1824,7 +1824,7 @@ size_t hashtableScanDefrag(hashtable *ht, size_t cursor, hashtableScanFunction f
          * index pointed to by the cursor in the smaller table. */
         do {
             /* Emit entries in the larger table at this cursor, if this index
-             * hash't already been rehashed. */
+             * hasn't already been rehashed. */
             idx = cursor & mask_large;
             if (table_large == 1 || ht->rehash_idx == -1 || idx >= (size_t)ht->rehash_idx) {
                 size_t used_before = ht->used[table_large];

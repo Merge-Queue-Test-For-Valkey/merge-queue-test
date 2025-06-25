@@ -771,7 +771,7 @@ void debugCommand(client *c) {
         addReplyStatus(c, d);
         sdsfree(d);
     } else if (!strcasecmp(c->argv[1]->ptr, "digest-value") && c->argc >= 2) {
-        /* DEBUG DIGEST-VALUE key key key ... key. */
+        /* DEBUG DIGEST-VALUE key key ... key. */
         addReplyArrayLen(c, c->argc - 2);
         for (int j = 2; j < c->argc; j++) {
             unsigned char digest[20];
@@ -952,7 +952,7 @@ void debugCommand(client *c) {
             addReplyVerbatim(c, buf, strlen(buf), "txt");
         } else {
             addReplyError(c, "The value stored at the specified key is not "
-                             "represented using an hash table");
+                             "represented using a hash table");
         }
     } else if (!strcasecmp(c->argv[1]->ptr, "change-repl-id") && c->argc == 2) {
         serverLog(LL_NOTICE, "Changing replication IDs after receiving DEBUG change-repl-id");
@@ -1207,17 +1207,17 @@ static void *getAndSetMcontextEip(ucontext_t *uc, void *eip) {
         return old_val;                         \
     } while (0)
 #if defined(__APPLE__) && !defined(MAC_OS_10_6_DETECTED)
-/* OSX < 10.6 */
+/* Mac OS X < 10.6 */
 #if defined(__x86_64__)
     GET_SET_RETURN(uc->uc_mcontext->__ss.__rip, eip);
 #elif defined(__i386__)
     GET_SET_RETURN(uc->uc_mcontext->__ss.__eip, eip);
 #else
-    /* OSX PowerPC */
+    /* Mac OS X PowerPC */
     GET_SET_RETURN(uc->uc_mcontext->__ss.__srr0, eip);
 #endif
 #elif defined(__APPLE__) && defined(MAC_OS_10_6_DETECTED)
-/* OSX >= 10.6 */
+/* Mac OS X >= 10.6 */
 #if defined(_STRUCT_X86_THREAD_STATE64) && !defined(__i386__)
     GET_SET_RETURN(uc->uc_mcontext->__ss.__rip, eip);
 #elif defined(__i386__)
@@ -1225,7 +1225,7 @@ static void *getAndSetMcontextEip(ucontext_t *uc, void *eip) {
 #elif defined(__ppc__)
     GET_SET_RETURN(uc->uc_mcontext->__ss.__srr0, eip);
 #else
-    /* OSX ARM64 */
+    /* macOS ARM64 */
     void *old_val = (void *)arm_thread_state64_get_pc(uc->uc_mcontext->__ss);
     if (eip) {
         arm_thread_state64_set_pc_fptr(uc->uc_mcontext->__ss, eip);
@@ -1312,9 +1312,9 @@ void logRegisters(ucontext_t *uc) {
         serverLog(LL_WARNING, "  Dumping of registers not supported for this OS/arch"); \
     } while (0)
 
-/* OSX */
+/* Mac OS X */
 #if defined(__APPLE__) && defined(MAC_OS_10_6_DETECTED)
-    /* OSX AMD64 */
+    /* Mac OS X AMD64 */
 #if defined(_STRUCT_X86_THREAD_STATE64) && !defined(__i386__)
     serverLog(LL_WARNING,
               "\n"
@@ -1336,7 +1336,7 @@ void logRegisters(ucontext_t *uc) {
               (unsigned long)uc->uc_mcontext->__ss.__gs);
     logStackContent((void **)uc->uc_mcontext->__ss.__rsp);
 #elif defined(__i386__)
-    /* OSX x86 */
+    /* Mac OS X x86 */
     serverLog(LL_WARNING,
               "\n"
               "EAX:%08lx EBX:%08lx ECX:%08lx EDX:%08lx\n"
@@ -1353,7 +1353,7 @@ void logRegisters(ucontext_t *uc) {
               (unsigned long)uc->uc_mcontext->__ss.__fs, (unsigned long)uc->uc_mcontext->__ss.__gs);
     logStackContent((void **)uc->uc_mcontext->__ss.__esp);
 #elif defined(__arm64__)
-    /* OSX ARM64 */
+    /* macOS ARM64 */
     serverLog(
         LL_WARNING,
         "\n"
@@ -2006,7 +2006,7 @@ static void killMainThread(void) {
     int err;
     if (pthread_self() != server.main_thread_id && pthread_cancel(server.main_thread_id) == 0) {
         if ((err = pthread_join(server.main_thread_id, NULL)) != 0) {
-            serverLog(LL_WARNING, "main thread can not be joined: %s", strerror(err));
+            serverLog(LL_WARNING, "main thread cannot be joined: %s", strerror(err));
         } else {
             serverLog(LL_WARNING, "main thread terminated");
         }

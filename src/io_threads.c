@@ -104,7 +104,7 @@ static int IOJobQueue_isEmpty(const IOJobQueue *jq) {
 /* Removes the next job from the given job queue by advancing the tail index.
  * Called by the IO thread.
  * The caller must ensure that the queue is not empty before calling this function.
- * This function uses relaxed memory order, so the caller need to use an release memory fence
+ * This function uses relaxed memory order, so the caller need to use a release memory fence
  * after calling this function to make sure the updated tail is visible to the producer (main thread). */
 static void IOJobQueue_removeJob(IOJobQueue *jq) {
     debugServerAssertWithInfo(NULL, NULL, !inMainThread());
@@ -287,7 +287,7 @@ static void shutdownIOThread(int id) {
     pthread_cancel(tid);
 
     if ((err = pthread_join(tid, NULL)) != 0) {
-        serverLog(LL_WARNING, "IO thread(tid:%lu) can not be joined: %s", (unsigned long)tid, strerror(err));
+        serverLog(LL_WARNING, "IO thread(tid:%lu) cannot be joined: %s", (unsigned long)tid, strerror(err));
     } else {
         serverLog(LL_NOTICE, "IO thread(tid:%lu) terminated", (unsigned long)tid);
     }

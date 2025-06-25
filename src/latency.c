@@ -74,7 +74,7 @@ void latencyMonitorInit(void) {
 
 /* Add the specified sample to the specified time series "event".
  * This function is usually called via latencyAddSampleIfNeeded(), that
- * is a macro that only adds the sample if the latency is higher than
+ * is a macro that only adds the sample if the latency is above
  * server.latency_monitor_threshold. */
 void latencyAddSample(const char *event, ustime_t latency_us) {
     mstime_t latency = latency_us / 1000;
@@ -372,7 +372,7 @@ sds createLatencyReport(void) {
         report = sdscat(report, "\nHere is some advice for you:\n\n");
         if (advise_better_vm) {
             report = sdscat(report, "- If you are using a virtual machine, consider upgrading it with a faster one "
-                                    "using a hypervisior that provides less latency during fork() calls. Xen is known "
+                                    "using a hypervisor that provides less latency during fork() calls. Xen is known "
                                     "to have poor fork() performance. Even in the context of the same VM provider, "
                                     "certain kinds of instances can execute fork faster than others.\n");
         }
@@ -629,7 +629,7 @@ void latencyCommandReplyWithLatestEvents(client *c) {
 }
 
 #define LATENCY_GRAPH_COLS 80
-sds latencyCommandGenSparkeline(char *event, struct latencyTimeSeries *ts) {
+sds latencyCommandGenSparkline(char *event, struct latencyTimeSeries *ts) {
     int j;
     struct sequence *seq = createSparklineSequence();
     sds graph = sdsempty();
@@ -678,7 +678,7 @@ sds latencyCommandGenSparkeline(char *event, struct latencyTimeSeries *ts) {
  * LATENCY DOCTOR: returns a human readable analysis of instance latency.
  * LATENCY GRAPH: provide an ASCII graph of the latency of the specified event.
  * LATENCY RESET: reset data of a specified event or all the data if no event provided.
- * LATENCY HISTOGRAM: return a cumulative distribution of latencies in the format of an histogram for the specified
+ * LATENCY HISTOGRAM: return a cumulative distribution of latencies in the format of a histogram for the specified
  * command names.
  */
 void latencyCommand(client *c) {
@@ -703,7 +703,7 @@ void latencyCommand(client *c) {
         ts = dictGetVal(de);
         event = dictGetKey(de);
 
-        graph = latencyCommandGenSparkeline(event, ts);
+        graph = latencyCommandGenSparkline(event, ts);
         addReplyVerbatim(c, graph, sdslen(graph), "txt");
         sdsfree(graph);
     } else if (!strcasecmp(c->argv[1]->ptr, "latest") && c->argc == 2) {

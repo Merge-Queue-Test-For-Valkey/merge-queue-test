@@ -46,7 +46,7 @@ static int checkStringLength(client *c, long long size, long long append) {
     if (mustObeyClient(c)) return C_OK;
     /* 'uint64_t' cast is there just to prevent undefined behavior on overflow */
     long long total = (uint64_t)size + append;
-    /* Test configured max-bulk-len represending a limit of the biggest string object,
+    /* Test configured max-bulk-len representing a limit of the biggest string object,
      * and also test for overflow. */
     if (total > server.proto_max_bulk_len || total < size || total < append) {
         addReplyError(c, "string exceeds maximum allowed size (proto-max-bulk-len)");
@@ -97,7 +97,7 @@ void setGenericCommand(client *c,
                        robj *ok_reply,
                        robj *abort_reply,
                        robj *comparison) {
-    long long milliseconds = 0; /* initialized to avoid any harmness warning */
+    long long milliseconds = 0; /* initialized to avoid any harmless warning */
     int found = 0;
     int setkey_flags = 0;
 
@@ -878,7 +878,7 @@ void lcsCommand(client *c) {
     uint32_t alen = sdslen(a);
     uint32_t blen = sdslen(b);
 
-/* Setup an uint32_t array to store at LCS[i,j] the length of the
+/* Set up an uint32_t array to store at LCS[i,j] the length of the
  * LCS A0..i-1, B0..j-1. Note that we have a linear array here, so
  * we index it as LCS[j+(blen+1)*i] */
 #define LCS(A, B) lcs[(B) + ((A) * (blen + 1))]
@@ -976,7 +976,7 @@ void lcsCommand(client *c) {
             i--;
             j--;
         } else {
-            /* Otherwise reduce i and j depending on the largest
+            /* Otherwise, reduce i and j depending on the largest
              * LCS between, to understand what direction we need to go. */
             uint32_t lcs1 = LCS(i - 1, j);
             uint32_t lcs2 = LCS(i, j - 1);

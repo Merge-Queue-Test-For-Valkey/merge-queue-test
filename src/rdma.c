@@ -334,7 +334,7 @@ static int rdmaCreateResource(RdmaContext *ctx, struct rdma_cm_id *cm_id) {
     int comp_vector = rdma_config->completion_vector;
 
     if (ibv_query_device(cm_id->verbs, &device_attr)) {
-        serverLog(LL_WARNING, "RDMA: ibv ibv query device failed");
+        serverLog(LL_WARNING, "RDMA: ibv query device failed");
         return C_ERR;
     }
 
@@ -682,7 +682,7 @@ static int connRdmaAccept(connection *conn, ConnectionCallbackFunc accept_handle
     connDecrRefs(conn);
 
     if (ibv_query_device(cm_id->verbs, &device_attr)) {
-        serverLog(LL_WARNING, "RDMA: ibv ibv query device failed");
+        serverLog(LL_WARNING, "RDMA: ibv query device failed");
         return C_ERR;
     }
 
@@ -729,7 +729,7 @@ static void connRdmaEventHandler(struct aeEventLoop *el, int fd, void *clientDat
         return;
     }
 
-    /* uplayer should read all */
+    /* up layer should read all */
     while (!(rdma_conn->flags & RDMA_CONN_FLAG_POSTPONE_UPDATE_STATE) && ctx->rx.pos < ctx->rx.offset) {
         if (conn->read_handler && (callHandler(conn, conn->read_handler) == C_ERR)) {
             return;
@@ -1924,7 +1924,7 @@ int ValkeyModule_OnLoad(void *ctx, ValkeyModuleString **argv, int argc) {
 
 int ValkeyModule_OnUnload(void *arg) {
     UNUSED(arg);
-    serverLog(LL_NOTICE, "Connection type %s can not be unloaded", CONN_TYPE_RDMA);
+    serverLog(LL_NOTICE, "Connection type %s cannot be unloaded", CONN_TYPE_RDMA);
     return VALKEYMODULE_ERR;
 }
 

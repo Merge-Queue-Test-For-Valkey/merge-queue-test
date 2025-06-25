@@ -82,13 +82,13 @@
  *      "pppppp" represents the unsigned 6 bit length.
  * |01pppppp|qqqqqqqq| - 2 bytes
  *      String value with length less than or equal to 16383 bytes (14 bits).
- *      IMPORTANT: The 14 bit number is stored in big endian.
+ *      IMPORTANT: The 14 bit number is stored in big-endian.
  * |10000000|qqqqqqqq|rrrrrrrr|ssssssss|tttttttt| - 5 bytes
  *      String value with length greater than or equal to 16384 bytes.
  *      Only the 4 bytes following the first byte represents the length
  *      up to 2^32-1. The 6 lower bits of the first byte are not used and
  *      are set to zero.
- *      IMPORTANT: The 32 bit number is stored in big endian.
+ *      IMPORTANT: The 32 bit number is stored in big-endian.
  * |11000000| - 3 bytes
  *      Integer encoded as int16_t (2 bytes).
  * |11010000| - 5 bytes
@@ -101,12 +101,12 @@
  *      Integer encoded as 8 bit signed (1 byte).
  * |1111xxxx| - (with xxxx between 0001 and 1101) immediate 4 bit integer.
  *      Unsigned integer from 0 to 12. The encoded value is actually from
- *      1 to 13 because 0000 and 1111 can not be used, so 1 should be
+ *      1 to 13 because 0000 and 1111 cannot be used, so 1 should be
  *      subtracted from the encoded 4 bit value to obtain the right value.
  * |11111111| - End of ziplist special entry.
  *
  * Like for the ziplist header, all the integers are represented in little
- * endian byte order, even when this code is compiled in big endian systems.
+ * endian byte order, even when this code is compiled in big-endian systems.
  *
  * EXAMPLES OF ACTUAL ZIPLISTS
  * ===========================
@@ -195,7 +195,7 @@
 #define ZIP_BIG_PREVLEN 254 /* ZIP_BIG_PREVLEN - 1 is the max number of bytes of      \
                                the previous entry, for the "prevlen" field prefixing  \
                                each entry, to be represented with just a single byte. \
-                               Otherwise it is represented as FE AA BB CC DD, where   \
+                               Otherwise, it is represented as FE AA BB CC DD, where  \
                                AA BB CC DD are a 4 bytes unsigned integer             \
                                representing the previous entry len. */
 
@@ -740,7 +740,7 @@ unsigned char *ziplistResize(unsigned char *zl, size_t len) {
  * updated, i.e. consecutive fields MAY need an update. */
 unsigned char *__ziplistCascadeUpdate(unsigned char *zl, unsigned char *p) {
     zlentry cur;
-    size_t prevlen, prevlensize, prevoffset; /* Informat of the last changed entry. */
+    size_t prevlen, prevlensize, prevoffset; /* Info of the last changed entry. */
     size_t firstentrylen;                    /* Used to handle insert at head. */
     size_t rawlen, curlen = intrev32ifbe(ZIPLIST_BYTES(zl));
     size_t extra = 0, cnt = 0, offset;
@@ -1169,7 +1169,7 @@ unsigned char *ziplistIndex(unsigned char *zl, int index) {
  * zl is the pointer to the ziplist
  * p is the pointer to the current element
  *
- * The element after 'p' is returned, otherwise NULL if we are at the end. */
+ * The element after 'p' is returned; otherwise, NULL if we are at the end. */
 unsigned char *ziplistNext(unsigned char *zl, unsigned char *p) {
     ((void)zl);
     size_t zlbytes = intrev32ifbe(ZIPLIST_BYTES(zl));

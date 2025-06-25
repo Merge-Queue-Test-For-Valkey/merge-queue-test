@@ -33,9 +33,9 @@
 
 /* ========================== Clients timeouts ============================= */
 
-/* Check if this blocked client timedout (does nothing if the client is
+/* Check if this blocked client timed out (does nothing if the client is
  * not blocked right now). If so send a reply, unblock it, and return 1.
- * Otherwise 0 is returned and no operation is performed. */
+ * Otherwise, 0 is returned and no operation is performed. */
 int checkBlockedClientTimeout(client *c, mstime_t now) {
     if (c->flag.blocked && c->bstate->timeout != 0 && c->bstate->timeout < now) {
         /* Handle blocking operation specific timeout. */
@@ -76,7 +76,7 @@ int clientsCronHandleTimeout(client *c, mstime_t now_ms) {
 /* For blocked clients timeouts we populate a radix tree of 128 bit keys
  * composed as such:
  *
- *  [8 byte big endian expire time]+[8 byte client ID]
+ *  [8 byte big-endian expire time]+[8 byte client ID]
  *
  * We don't do any cleanup in the Radix tree: when we run the clients that
  * reached the timeout already, if they are no longer existing or no longer

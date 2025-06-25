@@ -181,14 +181,14 @@ ssize_t rdbSaveMillisecondTime(rio *rdb, long long t) {
 /* This function loads a time from the RDB file. It gets the version of the
  * RDB because, unfortunately, before Redis OSS 5 (RDB version 9), the function
  * failed to convert data to/from little endian, so RDB files with keys having
- * expires could not be shared between big endian and little endian systems
+ * expires could not be shared between big-endian and little endian systems
  * (because the expire time will be totally wrong). The fix for this is just
  * to call memrev64ifbe(), however if we fix this for all the RDB versions,
- * this call will introduce an incompatibility for big endian systems:
+ * this call will introduce an incompatibility for big-endian systems:
  * after upgrading to Redis OSS version 5 they will no longer be able to load their
  * own old RDB files. Because of that, we instead fix the function only for new
  * RDB versions, and load older RDB versions as we used to do in the past,
- * allowing big endian systems to load their own old RDB files.
+ * allowing big-endian systems to load their own old RDB files.
  *
  * On I/O error the function returns LLONG_MAX, however if this is also a
  * valid stored value, the caller should use rioGetReadError() to check for
@@ -197,7 +197,7 @@ long long rdbLoadMillisecondTime(rio *rdb, int rdbver) {
     int64_t t64;
     if (rioRead(rdb, &t64, 8) == 0) return LLONG_MAX;
     if (rdbver >= 9)        /* Check the top comment of this function. */
-        memrev64ifbe(&t64); /* Convert in big endian if the system is BE. */
+        memrev64ifbe(&t64); /* Convert in big-endian if the system is BE. */
     return (long long)t64;
 }
 
@@ -296,7 +296,7 @@ uint64_t rdbLoadLen(rio *rdb, int *isencoded) {
 /* Encodes the "value" argument as integer when it fits in the supported ranges
  * for encoded types. If the function successfully encodes the integer, the
  * representation is stored in the buffer pointer to by "enc" and the string
- * length is returned. Otherwise 0 is returned. */
+ * length is returned. Otherwise, 0 is returned. */
 int rdbEncodeInteger(long long value, unsigned char *enc) {
     if (value >= -(1 << 7) && value <= (1 << 7) - 1) {
         enc[0] = (RDB_ENCVAL << 6) | RDB_ENC_INT8;
@@ -658,7 +658,7 @@ int rdbLoadDoubleValue(rio *rdb, double *val) {
 }
 
 /* Saves a double for RDB 8 or greater, where IE754 binary64 format is assumed.
- * We just make sure the integer is always stored in little endian, otherwise
+ * We just make sure the integer is always stored in little endian; otherwise,
  * the value is copied verbatim from memory to disk.
  *
  * Return -1 on error, the size of the serialized value on success. */
@@ -668,7 +668,7 @@ int rdbSaveBinaryDoubleValue(rio *rdb, double val) {
 }
 
 /* Loads a double from RDB 8 or greater. See rdbSaveBinaryDoubleValue() for
- * more info. On error -1 is returned, otherwise 0. */
+ * more info. On error -1 is returned; otherwise, 0. */
 int rdbLoadBinaryDoubleValue(rio *rdb, double *val) {
     if (rioRead(rdb, val, sizeof(*val)) == 0) return -1;
     memrev64ifbe(val);
@@ -755,7 +755,7 @@ ssize_t rdbSaveStreamPEL(rio *rdb, rax *pel, int nacks) {
     raxStart(&ri, pel);
     raxSeek(&ri, "^", NULL, 0);
     while (raxNext(&ri)) {
-        /* We store IDs in raw form as 128 big big endian numbers, like
+        /* We store IDs in raw form as 128 bit big-endian numbers, like
          * they are inside the radix tree key. */
         if ((n = rdbWriteRaw(rdb, ri.key, sizeof(streamID))) == -1) {
             raxStop(&ri);
@@ -1415,7 +1415,7 @@ werr:
 }
 
 /* Produces a dump of the database in RDB format sending it to the specified
- * I/O channel. On success C_OK is returned, otherwise C_ERR
+ * I/O channel. On success C_OK is returned; otherwise, C_ERR
  * is returned and part of the output, or all the output, can be
  * missing because of I/O errors.
  *
@@ -1808,7 +1808,7 @@ static int _listZiplistEntryConvertAndValidate(unsigned char *p, unsigned int he
     return 1;
 }
 
-/* callback for to check the listpack doesn't have duplicate records */
+/* callback to check the listpack doesn't have duplicate records */
 static int _lpEntryValidation(unsigned char *p, unsigned int head_count, void *userdata) {
     struct {
         int pairs;
@@ -1866,7 +1866,7 @@ int lpValidateIntegrityAndDups(unsigned char *lp, size_t size, int deep, int pai
 }
 
 /* Load an Object of the specified type from the specified file.
- * On success a newly allocated object is returned, otherwise NULL.
+ * On success a newly allocated object is returned; otherwise, NULL.
  * When the function returns NULL and if 'error' is not NULL, the
  * integer pointed by 'error' is set to the type of error that occurred */
 robj *rdbLoadObject(int rdbtype, rio *rdb, sds key, int dbid, int *error) {
@@ -2090,7 +2090,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key, int dbid, int *error) {
         else if (deep_integrity_validation) {
             /* In this mode, we need to guarantee that the server won't crash
              * later when the ziplist is converted to a hashtable.
-             * Create a set (hashtable with no values) to for a dup search.
+             * Create a set (hashtable with no values) for a dup search.
              * We can dismiss it as soon as we convert the ziplist to a hash. */
             dupSearchHashtable = hashtableCreate(&setHashtableType);
         }
@@ -2855,7 +2855,7 @@ emptykey:
     return NULL;
 }
 
-/* Mark that we are loading in the global state and setup the fields
+/* Mark that we are loading in the global state and set up the fields
  * needed to provide loading stats. */
 void startLoading(size_t size, int rdbflags, int async) {
     /* Load the DB */
@@ -2880,7 +2880,7 @@ void startLoading(size_t size, int rdbflags, int async) {
     moduleFireServerEvent(VALKEYMODULE_EVENT_LOADING, subevent, NULL);
 }
 
-/* Mark that we are loading in the global state and setup the fields
+/* Mark that we are loading in the global state and set up the fields
  * needed to provide loading stats.
  * 'filename' is optional and used for rdb-check on error */
 void startLoadingFile(size_t size, char *filename, int rdbflags) {
@@ -2961,7 +2961,7 @@ void rdbLoadProgressCallback(rio *r, const void *buf, size_t len) {
  * message on failure.
  *
  * The lib_ctx argument is also optional. If NULL is given, only verify rdb
- * structure with out performing the actual functions loading. */
+ * structure without performing the actual functions loading. */
 int rdbFunctionLoad(rio *rdb, int ver, functionsLibCtx *lib_ctx, int rdbflags, sds *err) {
     UNUSED(ver);
     sds error = NULL;
@@ -3516,7 +3516,7 @@ static void backgroundSaveDoneHandlerSocket(int exitcode, int bysignal) {
     server.rdb_pipe_numconns_writing = 0;
     zfree(server.rdb_pipe_buff);
     server.rdb_pipe_buff = NULL;
-    server.rdb_pipe_bufflen = 0;
+    server.rdb_pipe_buflen = 0;
 }
 
 /* When a background RDB saving/transfer terminates, call the right handler. */
@@ -3805,7 +3805,7 @@ void bgsaveCommand(client *c) {
  * if the rdbSave*() family functions receive a NULL rsi structure also
  * the Replication ID/offset is not saved. The function populates 'rsi'
  * that is normally stack-allocated in the caller, returns the populated
- * pointer if the instance has a valid primary client, otherwise NULL
+ * pointer if the instance has a valid primary client; otherwise, NULL
  * is returned, and the RDB saving will not persist any replication related
  * information. */
 rdbSaveInfo *rdbPopulateSaveInfo(rdbSaveInfo *rsi) {

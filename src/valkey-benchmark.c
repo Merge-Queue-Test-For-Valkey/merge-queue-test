@@ -1583,7 +1583,7 @@ usage:
         "                    the scheme 'valkeys'.\n"
         " -c <clients>       Number of parallel connections (default 50).\n"
         "                    Note: If --cluster is used then number of clients has to be\n"
-        "                    the same or higher than the number of nodes.\n"
+        "                    the same or greater than the number of nodes.\n"
         " -n <requests>      Total number of requests (default 100000)\n"
         " -d <size>          Data size of SET/GET value in bytes (default 3)\n"
         " --dbnum <db>       SELECT the specified db number (default 0)\n"
@@ -1935,7 +1935,7 @@ int main(int argc, char **argv) {
             sds_args[argc] = readArgFromStdin();
             argc++;
         }
-        /* Setup argument length */
+        /* Set up argument length */
         size_t *argvlen = zmalloc(argc * sizeof(size_t));
         for (i = 0; i < argc; i++) argvlen[i] = sdslen(sds_args[i]);
         /* RESP-encode the command(s) given on the syntax

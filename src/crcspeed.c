@@ -234,7 +234,7 @@ uint64_t crcspeed64little(uint64_t little_table[8][256], uint64_t crc1,
         MERGE_END(next2, 2);
     }
     /* We fall through here to handle our <CRC64_DUAL_CUTOFF inputs, and for any trailing
-     * bytes that wasn't evenly divisble by 16 or 24 above. */
+     * bytes that wasn't evenly divisible by 16 or 24 above. */
 
     /* fast processing, 8 bytes (aligned!) per loop */
     while (len >= 8) {
@@ -340,7 +340,7 @@ uint64_t crcspeed64big(uint64_t big_table[8][256], uint64_t crc, void *buf,
     return rev8(crc);
 }
 
-/* WARNING: Completely untested on big endian architecture.  Possibly broken. */
+/* WARNING: Completely untested on big-endian architecture.  Possibly broken. */
 uint16_t crcspeed16big(uint16_t big_table[8][256], uint16_t crc_in, void *buf,
                        size_t len) {
     unsigned char *next = buf;

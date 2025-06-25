@@ -182,7 +182,7 @@
 #endif
 #endif
 
-/* Define rdb_fsync_range to sync_file_range() on Linux, otherwise we use
+/* Define rdb_fsync_range to sync_file_range() on Linux; otherwise, we use
  * the plain fsync() call. */
 #if (defined(__linux__) && defined(SYNC_FILE_RANGE_WAIT_BEFORE))
 #define HAVE_SYNC_FILE_RANGE 1
@@ -196,7 +196,7 @@
 
 /* Check if we can use setproctitle().
  * BSD systems have support for it, we provide an implementation for
- * Linux and osx. */
+ * Linux and macOS. */
 #if (defined __NetBSD__ || defined __FreeBSD__ || defined __OpenBSD__)
 #define USE_SETPROCTITLE
 #endif

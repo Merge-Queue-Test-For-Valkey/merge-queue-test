@@ -319,13 +319,13 @@ static int dictCheckRehashingCompleted(dict *d) {
 }
 
 /* Performs N steps of incremental rehashing. Returns 1 if there are still
- * keys to move from the old to the new hash table, otherwise 0 is returned.
+ * keys to move from the old to the new hash table; otherwise, 0 is returned.
  *
  * Note that a rehashing step consists in moving a bucket (that may have more
  * than one key as we use chaining) from the old to the new hash table, however
  * since part of the hash table may be composed of empty spaces, it is not
  * guaranteed that this function will rehash even a single bucket, since it
- * will visit at max N*10 empty buckets in total, otherwise the amount of
+ * will visit at max N*10 empty buckets in total; otherwise, the amount of
  * work it does would be unbound and the function may block for a long time. */
 int dictRehash(dict *d, int n) {
     int empty_visits = n * 10; /* Max number of empty buckets to visit. */
@@ -447,7 +447,7 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing) {
 dictEntry *dictInsertAtPosition(dict *d, void *key, void *position) {
     dictEntry **bucket = position; /* It's a bucket, but the API hides that. */
     dictEntry *entry;
-    /* If rehashing is ongoing, we insert in table 1, otherwise in table 0.
+    /* If rehashing is ongoing, we insert in table 1; otherwise, in table 0.
      * Assert that the provided bucket is the right table. */
     int htidx = dictIsRehashing(d) ? 1 : 0;
     assert(bucket >= &d->ht_table[htidx][0] && bucket <= &d->ht_table[htidx][DICTHT_SIZE_MASK(d->ht_size_exp[htidx])]);
@@ -566,7 +566,7 @@ int dictDelete(dict *ht, const void *key) {
  * the key, value and dictionary entry. The dictionary entry is returned
  * if the element was found (and unlinked from the table), and the user
  * should later call `dictFreeUnlinkedEntry()` with it in order to release it.
- * Otherwise if the key is not found, NULL is returned.
+ * Otherwise, if the key is not found, NULL is returned.
  *
  * This function is useful when we want to remove something from the hash
  * table but want to use its value before actually deleting the entry.
@@ -816,7 +816,7 @@ unsigned long long dictFingerprint(dict *d) {
     return hash;
 }
 
-/* Initiaize a normal iterator. This function should be called when initializing
+/* Initialize a normal iterator. This function should be called when initializing
  * an iterator on the stack. */
 void dictInitIterator(dictIterator *iter, dict *d) {
     iter->d = d;
@@ -943,8 +943,8 @@ dictEntry *dictGetRandomKey(dict *d) {
 /* This function samples the dictionary to return a few keys from random
  * locations.
  *
- * It does not guarantee to return all the keys specified in 'count', nor
- * it does guarantee to return non-duplicated elements, however it will make
+ * It neither guarantees it will return all the keys specified in 'count', nor
+ * does it guarantee to return non-duplicated elements, however it will make
  * some effort to do both things.
  *
  * Returned pointers to hash table entries are stored into 'des' that

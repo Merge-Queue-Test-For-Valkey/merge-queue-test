@@ -657,7 +657,7 @@ start_server {tags {"multi"}} {
         # check that GET and PING are disallowed on stale replica, even if the replica becomes stale only after queuing.
         r multi
         r get xx
-        $r1 replicaof localhsot 0
+        $r1 replicaof localhost_ 0
         catch {r exec} e
         assert_match {*EXECABORT*MASTERDOWN*} $e
 
@@ -666,7 +666,7 @@ start_server {tags {"multi"}} {
 
         r multi
         r ping
-        $r1 replicaof localhsot 0
+        $r1 replicaof localhost_ 0
         catch {r exec} e
         assert_match {*EXECABORT*MASTERDOWN*} $e
 
@@ -740,12 +740,12 @@ start_server {tags {"multi"}} {
         set repl [attach_to_replication_stream]
 
         r multi
-        r publish bla bla
+        r publish blah blah
         r exec
 
         assert_replication_stream $repl {
             {select *}
-            {publish bla bla}
+            {publish blah blah}
         }
         close_replication_stream $repl
     } {} {needs:repl cluster:skip}
@@ -807,7 +807,7 @@ start_server {tags {"multi"}} {
             r XADD mystream * foo3 bar3
             r XGROUP CREATE mystream mygroup 0
 
-            # make sure the XCALIM (propagated by XREADGROUP) is indeed inside MULTI/EXEC
+            # make sure the XCLAIM (propagated by XREADGROUP) is indeed inside MULTI/EXEC
             r multi
             r XREADGROUP GROUP mygroup consumer1 COUNT 2 STREAMS mystream ">"
             r XREADGROUP GROUP mygroup consumer1 STREAMS mystream ">"
@@ -878,7 +878,7 @@ start_server {tags {"multi"}} {
     test "MULTI with config error" {
         r multi
         r set foo bar
-        r config set maxmemory bla
+        r config set maxmemory blah
 
         # letting the server parser read it, it'll throw an exception instead of
         # reply with an array that contains an error, so we switch to reading

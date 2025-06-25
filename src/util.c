@@ -220,7 +220,7 @@ int stringmatchlen_fuzz_test(void) {
  * bytes, so for instance memtoull("1Gb") will return 1073741824 that is
  * (1024*1024*1024).
  *
- * On parsing error, if *err is not NULL, it's set to 1, otherwise it's
+ * On parsing error, if *err is not NULL, it's set to 1; otherwise, it's
  * set to 0. On error the function return value is 0, regardless of the
  * fact 'err' is NULL or not. */
 unsigned long long memtoull(const char *p, int *err) {
@@ -425,9 +425,9 @@ err:
 #define MULTIPLIER_10E16 10000000000000000ULL
 
 /**
- * Convert a string into an signed 64-bit integer using AVX-512 instructions.
+ * Convert a string into a signed 64-bit integer using AVX-512 instructions.
  *
- * This function parses a string of digits and converts it into an signed
+ * This function parses a string of digits and converts it into a signed
  * 64-bit integer. It leverages AVX-512 SIMD instructions for optimized
  * processing and performs strict validation to ensure the input string
  * represents a valid signed integer.
@@ -584,7 +584,7 @@ static int string2llScalar(const char *s, size_t slen, long long *value) {
         if (plen == slen) return 0;
     }
 
-    /* First digit should be 1-9, otherwise the string should just be 0. */
+    /* First digit should be 1-9; otherwise, the string should just be 0. */
     if (p[0] >= '1' && p[0] <= '9') {
         v = p[0] - '0';
         p++;
@@ -854,7 +854,7 @@ int d2string(char *buf, size_t len, double value) {
  */
 int fixedpoint_d2string(char *dst, size_t dstlen, double dvalue, int fractional_digits) {
     if (fractional_digits < 1 || fractional_digits > 17) goto err;
-    /* min size of 2 ( due to 0. ) + n fractional_digitits + \0 */
+    /* min size of 2 ( due to 0. ) + n fractional_digits + \0 */
     if ((int)dstlen < (fractional_digits + 3)) goto err;
     if (dvalue == 0) {
         dst[0] = '0';

@@ -166,7 +166,7 @@ proc spawn_instance {type base_port count {conf {}} {base_conf_file ""}} {
         if {[server_is_up $::host $port 100] == 0} {
             set logfile [file join $dirname log.txt]
             puts [exec tail $logfile]
-            abort_sentinel_test "Problems starting $type #$j: ping timeout, maybe server start failed, check $logfile"
+            abort_sentinel_test "Problem starting $type #$j: ping timeout, maybe server start failed, check $logfile"
         }
 
         # Push the instance into the right list
@@ -329,7 +329,7 @@ proc parse_options {} {
             puts "--tls                   Run tests in TLS mode."
             puts "--tls-module            Run tests in TLS mode with Valkey module."
             puts "--io-threads            Run tests with IO threads."
-            puts "--host <host>           Use hostname instead of 127.0.0.1."
+            puts "--host <hostname>       Use hostname instead of 127.0.0.1."
             puts "--config <k> <v>        Extra config argument(s)."
             puts "--fast-fail             Exit immediately once the first test fails."
             puts "--stop                  Blocks once the first test fails."
@@ -408,8 +408,8 @@ proc pause_on_error {} {
             }
         } elseif {$cmd eq {help}} {
             puts "ls                     List Sentinel and Valkey instances."
-            puts "show-sentinel-logs \[N\] Show latest N lines of logs."
-            puts "show-valkey-logs \[N\]    Show latest N lines of logs."
+            puts "show-sentinel-logs \[N\] Show latest N lines of sentinel logs."
+            puts "show-valkey-logs \[N\]   Show latest N lines of valkey logs."
             puts "S <id> cmd ... arg     Call command in Sentinel <id>."
             puts "R <id> cmd ... arg     Call command in Valkey <id>."
             puts "SI <id> <field>        Show Sentinel <id> INFO <field>."
@@ -446,7 +446,7 @@ proc test {descr code} {
     }
 }
 
-# Check memory leaks when running on OSX using the "leaks" utility.
+# Check memory leaks when running on macOS using the "leaks" utility.
 proc check_leaks instance_types {
     if {[string match {*Darwin*} [exec uname -a]]} {
         puts -nonewline "Testing for memory leaks..."; flush stdout
@@ -538,7 +538,7 @@ proc end_tests {} {
 # The "S" command is used to interact with the N-th Sentinel.
 # The general form is:
 #
-# S <sentinel-id> command arg arg arg ...
+# S <sentinel-id> command arg arg ... arg
 #
 # Example to ping the Sentinel 0 (first instance): S 0 PING
 proc S {n args} {
@@ -706,7 +706,7 @@ proc restart_instance {type id} {
     set cfgfile [file join $dirname $type.conf]
     set port [get_instance_attrib $type $id port]
 
-    # Execute the instance with its old setup and append the new pid
+    # Execute the instance with its old set up and append the new pid
     # file for cleanup.
     set pid [exec_instance $type $dirname $cfgfile]
     set_instance_attrib $type $id pid $pid

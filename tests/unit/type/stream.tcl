@@ -488,7 +488,7 @@ start_server {
         r XADD "\{lestream\}2" 2-0 k2 v5
         r XADD "\{lestream\}2" 3-0 k3 v6
 
-        # read last element from 3 streams (2 with enetries, 1 non-existent)
+        # read last element from 3 streams (2 with entries, 1 nonexistent)
         # verify the last element from the two existing streams were returned
         set res [r XREAD STREAMS "\{lestream\}1" "\{lestream\}2" "\{lestream\}3" + + +]
         assert_equal $res {{{{lestream}1} {{3-0 {k3 v3}}}} {{{lestream}2} {{3-0 {k3 v6}}}}}
@@ -902,7 +902,7 @@ start_server {tags {"stream"}} {
         set err
     } {ERR *smaller*}
 
-    test {XSETID cannot SETID on non-existent key} {
+    test {XSETID cannot SETID on nonexistent key} {
         catch {r XSETID stream 1-1} err
         set _ $err
     } {ERR no such key}
@@ -917,7 +917,7 @@ start_server {tags {"stream"}} {
         set _ $err
     } {ERR syntax error}
 
-    test {XSETID errors on negstive offset} {
+    test {XSETID errors on negative offset} {
         catch {r XSETID stream 1-1 ENTRIESADDED -1 MAXDELETEDID 0-0} err
         set _ $err
     } {ERR *must be positive}
@@ -1012,7 +1012,7 @@ start_server {tags {"stream"}} {
         assert_equal [dict get $reply max-deleted-entry-id] "2-0"
     }
 
-    test {XADD with artial ID with maximal seq} {
+    test {XADD with partial ID with maximal seq} {
         r DEL x
         r XADD x 1-18446744073709551615 f1 v1
         assert_error {*The ID specified in XADD is equal or smaller*} {r XADD x 1-* f2 v2}
