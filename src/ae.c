@@ -91,7 +91,9 @@ aeEventLoop *aeCreateEventLoop(int setsize) {
     eventLoop->beforesleep = NULL;
     eventLoop->aftersleep = NULL;
     eventLoop->custompoll = NULL;
+    eventLoop->prefetch = NULL;
     eventLoop->flags = 0;
+    eventLoop->epoll_batch_size = 0; /* Default to 0, meaning use setsize */
     /* Initialize the eventloop mutex with PTHREAD_MUTEX_ERRORCHECK type */
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
@@ -216,6 +218,9 @@ void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask) {
     /* We want to always remove AE_BARRIER if set when AE_WRITABLE
      * is removed. */
     if (mask & AE_WRITABLE) mask |= AE_BARRIER;
+
+    /* We want to always remove AE_PRE_READABLE_HOOK if set when AE_READABLE is removed. */
+    if (mask & AE_READABLE) mask |= AE_PRE_READABLE_HOOK;
 
     /* Only remove attached events */
     mask = mask & fe->mask;
@@ -458,6 +463,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags) {
         if (eventLoop->aftersleep != NULL && flags & AE_CALL_AFTER_SLEEP) eventLoop->aftersleep(eventLoop, numevents);
 
         for (j = 0; j < numevents; j++) {
+            if (numevents > 1 && eventLoop->prefetch) eventLoop->prefetch(eventLoop, j, numevents);
             int fd = eventLoop->fired[j].fd;
             aeFileEvent *fe = &eventLoop->events[fd];
             int mask = eventLoop->fired[j].mask;
@@ -562,10 +568,18 @@ void aeSetCustomPollProc(aeEventLoop *eventLoop, aeCustomPollProc *custompoll) {
     eventLoop->custompoll = custompoll;
 }
 
+void aeSetPrefetchProc(aeEventLoop *eventLoop, aePrefetchProc *prefetch) {
+    eventLoop->prefetch = prefetch;
+}
+
 void aeSetPollProtect(aeEventLoop *eventLoop, int protect) {
     if (protect) {
         eventLoop->flags |= AE_PROTECT_POLL;
     } else {
         eventLoop->flags &= ~AE_PROTECT_POLL;
     }
+}
+
+void aeSetEpollBatchSize(aeEventLoop *eventLoop, int batchSize) {
+    eventLoop->epoll_batch_size = batchSize;
 }

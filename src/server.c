@@ -93,6 +93,10 @@
 
 struct sharedObjectsStruct shared;
 
+__thread client *_current_client;   /* The client that triggered the command execution (External or AOF). */
+__thread client *_executing_client; /* The client executing the current command (possibly script or module). */
+__thread mstime_t cmd_time_snapshot; /* Time snapshot of the root execution nesting. */
+
 /* Global vars that are actually used as constants. The following double
  * values are used for double on-disk serialization, and are initialized
  * at runtime to avoid strange compiler optimizations. */
@@ -114,7 +118,7 @@ const char *replstateToString(int replstate);
 /*============================ Utility functions ============================ */
 
 /* This macro tells if we are in the context of loading an AOF. */
-#define isAOFLoadingContext() ((server.current_client && server.current_client->id == CLIENT_ID_AOF) ? 1 : 0)
+#define isAOFLoadingContext() ((getCurrentClient() && getCurrentClient()->id == CLIENT_ID_AOF) ? 1 : 0)
 
 /* We use a private localtime implementation which is fork-safe. The logging
  * function of the server may be called from other threads. */
@@ -350,7 +354,7 @@ mstime_t commandTimeSnapshot(void) {
      * propagation to replicas / AOF consistent. See issue #1525 for more info.
      * Note that we cannot use the cached server.mstime because it can change
      * in processEventsWhileBlocked etc. */
-    return server.cmd_time_snapshot;
+    return cmd_time_snapshot;
 }
 
 /* After an RDB dump or AOF rewrite we exit from children using _exit() instead of
@@ -1356,7 +1360,7 @@ void enterExecutionUnit(int update_cached_time, long long us) {
             us = ustime();
         }
         updateCachedTimeWithUs(0, us);
-        server.cmd_time_snapshot = server.mstime;
+        cmd_time_snapshot = server.mstime;
     }
 }
 
@@ -1478,6 +1482,10 @@ long long serverCron(struct aeEventLoop *eventLoop, long long id, void *clientDa
     UNUSED(eventLoop);
     UNUSED(id);
     UNUSED(clientData);
+
+    if (isServerCronDeferred()) {
+        return AE_NOMORE;
+    }
 
     /* Software watchdog: deliver the SIGALRM that will reach the signal
      * handler if we don't return here fast enough. */
@@ -1800,14 +1808,14 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
      * events to handle. */
     if (ProcessingEventsWhileBlocked) {
         uint64_t processed = 0;
-        processed += processIOThreadsReadDone();
+        processed += processIOThreadsResponses();
         processed += connTypeProcessPendingData();
         if (server.aof_state == AOF_ON || server.aof_state == AOF_WAIT_REWRITE) flushAppendOnlyFile(0);
         processed += handleClientsWithPendingWrites();
         int last_processed = 0;
         do {
             /* Try to process all the pending IO events. */
-            last_processed = processIOThreadsReadDone() + processIOThreadsWriteDone();
+            last_processed = processIOThreadsResponses();
             processed += last_processed;
         } while (last_processed != 0);
         processed += freeClientsInAsyncFreeQueue();
@@ -1816,7 +1824,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
     }
 
     /* We should handle pending reads clients ASAP after event loop. */
-    processIOThreadsReadDone();
+    processIOThreadsResponses();
 
     /* Handle pending data(typical TLS). (must be done before flushAppendOnlyFile) */
     connTypeProcessPendingData();
@@ -1911,10 +1919,8 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
 
     /* Try to process more IO reads that are ready to be processed. */
     if (server.aof_fsync != AOF_FSYNC_ALWAYS) {
-        processIOThreadsReadDone();
+        processIOThreadsResponses();
     }
-
-    processIOThreadsWriteDone();
 
     /* Record cron time in beforeSleep. This does not include the time consumed by AOF writing and IO writing above. */
     monotime cron_start_time_after_write = getMonotonicUs();
@@ -1997,7 +2003,7 @@ void afterSleep(struct aeEventLoop *eventLoop, int numevents) {
      * e.g. somehow used by module timers. Don't update it while yielding to a
      * blocked command, call() will handle that and restore the original time. */
     if (!ProcessingEventsWhileBlocked) {
-        server.cmd_time_snapshot = server.mstime;
+        cmd_time_snapshot = server.mstime;
     }
 
     adjustIOThreadsByEventLoad(numevents, 0);
@@ -2208,7 +2214,7 @@ void initServerConfig(void) {
 
     initConfigValues();
     updateCachedTime(1);
-    server.cmd_time_snapshot = server.mstime;
+    cmd_time_snapshot = server.mstime;
     getRandomHexChars(server.runid, CONFIG_RUN_ID_SIZE);
     server.runid[CONFIG_RUN_ID_SIZE] = '\0';
     changeReplicationId();
@@ -2718,6 +2724,7 @@ void resetServerStats(void) {
     server.stat_sync_partial_ok = 0;
     server.stat_sync_partial_err = 0;
     server.stat_io_reads_processed = 0;
+    server.stat_io_commands_processed = 0;
     server.stat_total_reads_processed = 0;
     server.stat_io_writes_processed = 0;
     server.stat_io_freed_objects = 0;
@@ -2726,6 +2733,7 @@ void resetServerStats(void) {
     server.stat_total_writes_processed = 0;
     server.stat_client_qbuf_limit_disconnections = 0;
     server.stat_client_outbuf_limit_disconnections = 0;
+    server.stat_deferred_jobs_processed = 0;
     for (j = 0; j < STATS_METRIC_COUNT; j++) {
         server.inst_metric[j].idx = 0;
         server.inst_metric[j].last_sample_base = 0;
@@ -2818,7 +2826,8 @@ void initServer(void) {
     server.rdb_pipe_read = -1;
     server.rdb_child_exit_pipe = -1;
     server.main_thread_id = pthread_self();
-    server.current_client = NULL;
+    setCurrentClient(NULL);
+    setExecutingClient(NULL);
     server.errors = raxNew();
     server.execution_nesting = 0;
     server.clients = listCreate();
@@ -2829,8 +2838,6 @@ void initServer(void) {
     server.replicas_waiting_psync = raxNew();
     server.wait_before_rdb_client_free = DEFAULT_WAIT_BEFORE_RDB_CLIENT_FREE;
     server.clients_pending_write = listCreate();
-    server.clients_pending_io_write = listCreate();
-    server.clients_pending_io_read = listCreate();
     server.clients_timeout_table = raxNew();
     server.replication_allowed = 1;
     server.replicas_eldb = -1; /* Force to emit the first SELECT command. */
@@ -2871,6 +2878,10 @@ void initServer(void) {
         serverLog(LL_WARNING, "Failed creating the event loop. Error message: '%s'", strerror(errno));
         exit(1);
     }
+    /* Set the epoll batch size for the server event loop */
+    aeSetEpollBatchSize(server.el, AE_EPOLL_EVENTS_BATCH_SIZE);
+
+    aeSetPrefetchProc(server.el, prefetchEvents);
 
     server.dbnum = server.cluster_enabled ? server.config_databases_cluster : server.config_databases;
     server.db = zcalloc(sizeof(serverDb *) * server.dbnum);
@@ -3601,8 +3612,9 @@ static void propagatePendingCommands(void) {
     /* In case a command that may modify random keys was run *directly*
      * (i.e. not from within a script, MULTI/EXEC, RM_Call, etc.) we want
      * to avoid using a transaction (much like active-expire) */
-    if (server.current_client && server.current_client->cmd &&
-        server.current_client->cmd->flags & CMD_TOUCHES_ARBITRARY_KEYS) {
+    client *current_client = getCurrentClient();
+    if (current_client && current_client->cmd &&
+        current_client->cmd->flags & CMD_TOUCHES_ARBITRARY_KEYS) {
         transaction = 0;
     }
 
@@ -3721,8 +3733,8 @@ void call(client *c, int flags) {
     struct ClientFlags client_old_flags = c->flag;
 
     struct serverCommand *real_cmd = c->realcmd;
-    client *prev_client = server.executing_client;
-    server.executing_client = c;
+    client *prev_client = getExecutingClient();
+    setExecutingClient(c);
 
     /* When call() is issued during loading the AOF we don't want commands called
      * from module, exec or LUA to go into the commandlog or to populate statistics. */
@@ -3892,22 +3904,23 @@ void call(client *c, int flags) {
     /* If the client has keys tracking enabled for client side caching,
      * make sure to remember the keys it fetched via this command. For read-only
      * scripts, don't process the script, only the commands it executes. */
+    client *current_client = getCurrentClient();
     if ((c->cmd->flags & CMD_READONLY) && (c->cmd->proc != evalRoCommand) && (c->cmd->proc != evalShaRoCommand) &&
         (c->cmd->proc != fcallroCommand)) {
         /* We use the tracking flag of the original external client that
          * triggered the command, but we take the keys from the actual command
          * being executed. */
-        if (server.current_client && (server.current_client->flag.tracking) &&
-            !(server.current_client->flag.tracking_bcast)) {
-            trackingRememberKeys(server.current_client, c);
+        if (current_client && (current_client->flag.tracking) &&
+            !(current_client->flag.tracking_bcast)) {
+            trackingRememberKeys(current_client, c);
         }
     }
 
     if (!c->flag.blocked) {
-        /* Modules may call commands in cron, in which case server.current_client
+        /* Modules may call commands in cron, in which case current_client
          * is not set. */
-        if (server.current_client) {
-            server.current_client->commands_processed++;
+        if (current_client) {
+            current_client->commands_processed++;
         }
         server.stat_numcommands++;
     }
@@ -3930,7 +3943,56 @@ void call(client *c, int flags) {
         server.client_pause_in_transaction = 0;
     }
 
-    server.executing_client = prev_client;
+    setExecutingClient(prev_client);
+}
+
+/* Execute a command that has been offloaded to an IO thread.
+ * This function is called by IO threads.
+ * It executes the command and writes the response back to the client. */
+void ioThreadCallCommand(void *data) {
+    client *c = (client *)data;
+    const long long call_timer = ustime();
+    c->flag.executing_command = 1;
+    setCurrentClient(c);
+    setExecutingClient(c);
+    
+    /* Set command time snapshot for this thread context */
+    cmd_time_snapshot = server.mstime;
+
+    monotime monotonic_start = 0;
+    if (monotonicGetType() == MONOTONIC_CLOCK_HW) {
+        monotonic_start = getMonotonicUs();
+    }
+
+    /* Execute the command */
+    c->cmd->proc(c);
+
+    c->flag.executing_command = 0;
+
+    ustime_t duration;
+    if (monotonicGetType() == MONOTONIC_CLOCK_HW)
+        duration = getMonotonicUs() - monotonic_start;
+    else
+        duration = ustime() - call_timer;
+
+    c->duration += duration;
+
+    /* Send write response to the client */
+    c->nwritten = 0;
+    c->write_flags = 0;
+    /* Set the reply block and bufpos */
+    c->io_last_reply_block = listLast(c->reply);
+    if (c->io_last_reply_block) {
+        c->io_last_bufpos = ((clientReplyBlock *)listNodeValue(c->io_last_reply_block))->used;
+    } else {
+        c->io_last_bufpos = (size_t)c->bufpos;
+    }
+
+    writeClientData(c);
+
+    c->io_command_state = CLIENT_COMPLETED_IO;
+    c->io_write_state = CLIENT_COMPLETED_IO;
+    threadRespond(c, R_COMMAND);
 }
 
 /* Used when a command that is ready for execution needs to be rejected, due to
@@ -4229,6 +4291,8 @@ int processCommand(client *c) {
         }
     }
 
+    if (!postponeClientCommand(c)) return C_OK;
+
     if (!server.cluster_enabled && c->capa & CLIENT_CAPA_REDIRECT && server.primary_host && !obey_client &&
         (is_write_command || (is_read_command && !c->flag.readonly))) {
         if (server.failover_state == FAILOVER_IN_PROGRESS) {
@@ -4269,7 +4333,7 @@ int processCommand(client *c) {
      * before key eviction, after the last command was executed and consumed
      * some client output buffer memory. */
     evictClients();
-    if (server.current_client == NULL) {
+    if (getCurrentClient() == NULL) {
         /* If we evicted ourself then abort processing the command */
         return C_ERR;
     }
@@ -4291,7 +4355,7 @@ int processCommand(client *c) {
 
         /* performEvictions may flush replica output buffers. This may result
          * in a replica, that may be the active client, to be freed. */
-        if (server.current_client == NULL) return C_ERR;
+        if (getCurrentClient() == NULL) return C_ERR;
 
         if (out_of_memory && is_denyoom_command) {
             rejectCommand(c, shared.oomerr);
@@ -4429,6 +4493,9 @@ int processCommand(client *c) {
         addReply(c, shared.queued);
     } else {
         int flags = CMD_CALL_FULL;
+        if (trySendProcessCommandToIOThreads(c) == C_OK) {
+            return C_OK;
+        }
         call(c, flags);
         if (listLength(server.ready_keys) && !isInsideYieldingLongCommand()) handleClientsBlockedOnKeys();
     }
@@ -6093,10 +6160,17 @@ sds genValkeyInfoString(dict *section_dict, int all_sections, int everything) {
                 "io_threaded_reads_processed:%lld\r\n", server.stat_io_reads_processed,
                 "io_threaded_writes_processed:%lld\r\n", server.stat_io_writes_processed,
                 "io_threaded_freed_objects:%lld\r\n", server.stat_io_freed_objects,
+                "io_threaded_reads_pending:%lld\r\n", server.stat_io_reads_pending,
+                "io_threaded_writes_pending:%lld\r\n", server.stat_io_writes_pending,
+                "io_threaded_commands_pending:%lld\r\n", server.stat_io_commands_pending,
+                "io_threaded_commands_processed:%lld\r\n", server.stat_io_commands_processed,
                 "io_threaded_accept_processed:%lld\r\n", server.stat_io_accept_offloaded,
                 "io_threaded_poll_processed:%lld\r\n", server.stat_poll_processed_by_io_threads,
                 "io_threaded_total_prefetch_batches:%lld\r\n", server.stat_total_prefetch_batches,
                 "io_threaded_total_prefetch_entries:%lld\r\n", server.stat_total_prefetch_entries,
+                "io_threaded_clients_blocked_on_slot:%lld\r\n", server.stat_io_threaded_clients_blocked_on_slot,
+                "io_threaded_clients_blocked_total:%lld\r\n", server.stat_io_threaded_clients_blocked_total,
+                "io_threaded_postponed_jobs_to_mainthread:%lld\r\n", server.stat_deferred_jobs_processed,
                 "client_query_buffer_limit_disconnections:%lld\r\n", server.stat_client_qbuf_limit_disconnections,
                 "client_output_buffer_limit_disconnections:%lld\r\n", server.stat_client_outbuf_limit_disconnections,
                 "reply_buffer_shrinks:%lld\r\n", server.stat_reply_buffer_shrinks,
