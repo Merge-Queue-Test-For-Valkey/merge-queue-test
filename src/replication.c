@@ -2498,7 +2498,7 @@ void readSyncBulkPayload(connection *conn) {
         }
 
         /* Cleanup. */
-        if (server.rdb_del_sync_files && allPersistenceDisabled()) {
+        if (!(server.aof_enabled && server.aof_use_rdb_preamble) && server.rdb_del_sync_files && allPersistenceDisabled()) {
             serverLog(LL_NOTICE, "Removing the RDB file obtained from "
                                  "the primary. This replica has persistence "
                                  "disabled");
@@ -2548,7 +2548,9 @@ void readSyncBulkPayload(connection *conn) {
     /* Restart the AOF subsystem now that we finished the sync. This
      * will trigger an AOF rewrite, and when done will start appending
      * to the new file. */
-    if (server.aof_enabled) restartAOFAfterSYNC();
+    if (!use_diskless_load && server.aof_enabled && server.aof_use_rdb_preamble) RestartAOFWithSyncFile();
+
+    if (server.aof_enabled && server.aof_state == AOF_OFF) restartAOFAfterSYNC();
 
     /* In case of dual channel replication sync we want to close the RDB connection
      * once the connection is established */
@@ -3984,7 +3986,6 @@ int connectWithPrimary(void) {
         server.repl_transfer_s = NULL;
         return C_ERR;
     }
-
 
     server.repl_transfer_lastio = server.unixtime;
     server.repl_state = REPL_STATE_CONNECTING;

@@ -1005,6 +1005,120 @@ int startAppendOnly(void) {
     return C_OK;
 }
 
+/* try to Restart AOF after a successful primary-replica full SYNC with
+ * existing RDB file. */
+int RestartAOFWithSyncFile(void) {
+    serverAssert(server.aof_state == AOF_OFF);
+
+    int newfd = -1, rdbfile_renamed = 0;
+    sds new_base_filename = NULL;
+    sds new_base_filepath = NULL;
+    sds new_incr_filename = NULL;
+    sds new_incr_filepath = NULL;
+    aofManifest *temp_am = NULL;
+
+    /* Make sure the AOF directory exists */
+    if (dirCreateIfMissing(server.aof_dirname) == -1) {
+        serverLog(LL_WARNING, "Can't open or create append-only dir %s: %s", server.aof_dirname, strerror(errno));
+        goto cleanup;
+    }
+
+    serverAssert(server.aof_manifest != NULL);
+    /* Create a temporary copy of the manifest for modifications */
+    temp_am = aofManifestDup(server.aof_manifest);
+
+    /* Generate a new base AOF filename and mark the previous base file (if any) as history */
+    new_base_filename = getNewBaseFileNameAndMarkPreAsHistory(temp_am, server.aof_use_rdb_preamble);
+    serverAssert(new_base_filename != NULL);
+    new_base_filepath = makePath(server.aof_dirname, new_base_filename);
+    /* Rename the RDB file to be the new base AOF file */
+    if (rename(server.rdb_filename, new_base_filepath) == -1) {
+        serverLog(LL_WARNING, "Error trying to rename the RDB file %s into %s: %s", server.rdb_filename,
+                  new_base_filepath, strerror(errno));
+        goto cleanup;
+    }
+    rdbfile_renamed = 1;
+
+    /* Create a new incr AOF file */
+    new_incr_filename = getNewIncrAofName(temp_am);
+    new_incr_filepath = makePath(server.aof_dirname, new_incr_filename);
+    newfd = open(new_incr_filepath, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+    if (newfd == -1) {
+        serverLog(LL_WARNING, "Can't open the append-only file %s: %s", new_incr_filename, strerror(errno));
+        goto cleanup;
+    }
+
+    /* Change the AOF file type in 'incr_aof_list' from AOF_FILE_TYPE_INCR
+     * to AOF_FILE_TYPE_HIST, and move them to the 'history_aof_list'. */
+    markRewrittenIncrAofAsHistory(temp_am);
+
+    /* Persist AOF Manifest. */
+    if (persistAofManifest(temp_am) == C_ERR) {
+        goto cleanup;
+    }
+
+    /* Now, we can safely Update the server's manifest with our modified one */
+    aofManifestFreeAndUpdate(temp_am);
+
+    aofDelHistoryFiles();
+
+    /* Now, it will not goto clean up, then we can safely free new_base_filepath */
+    sdsfree(new_base_filepath);
+    sdsfree(new_incr_filepath);
+
+    /* Set the initial repl_offset, which will be applied to fsynced_reploff */
+    atomic_store_explicit(&server.fsynced_reploff_pending, server.primary_repl_offset, memory_order_relaxed);
+    /* Update the fsynced replication offset that just now become valid. */
+    long long fsynced_reploff_pending =
+        atomic_load_explicit(&server.fsynced_reploff_pending, memory_order_relaxed);
+    server.fsynced_reploff = fsynced_reploff_pending;
+
+    /* If AOF fsync error in bio job, we just ignore it and log the event. */
+    int aof_bio_fsync_status = atomic_load_explicit(&server.aof_bio_fsync_status, memory_order_relaxed);
+    if (aof_bio_fsync_status == C_ERR) {
+        serverLog(LL_WARNING, "AOF reopen, just ignore the AOF fsync error in bio job");
+        atomic_store_explicit(&server.aof_bio_fsync_status, C_OK, memory_order_relaxed);
+    }
+
+    /* If AOF was in error state, we just ignore it and log the event. */
+    if (server.aof_last_write_status == C_ERR) {
+        serverLog(LL_WARNING, "AOF reopen, just ignore the last error.");
+        server.aof_last_write_status = C_OK;
+    }
+
+    /* Pretend the bgrewrite has been done successfully */
+    server.aof_lastbgrewrite_status = C_OK;
+    server.stat_aofrw_consecutive_failures = 0;
+
+    server.aof_last_fsync = server.mstime;
+    server.aof_last_incr_size = 0;
+    server.aof_last_incr_fsync_offset = 0;
+    server.aof_rewrite_base_size = getAppendOnlyFileSize(new_base_filename, NULL);
+    server.aof_current_size = server.aof_rewrite_base_size;
+
+    server.aof_fd = newfd;
+    server.aof_state = AOF_ON;
+
+    return C_OK;
+
+cleanup:
+    if (server.rdb_del_sync_files && allPersistenceDisabled()) {
+        serverLog(LL_NOTICE, "Removing the RDB file obtained from "
+                             "the primary. This replica has persistence "
+                             "disabled");
+        if (rdbfile_renamed) {
+            bg_unlink(new_base_filepath);
+        } else {
+            bg_unlink(server.rdb_filename);
+        }
+    }
+    if (temp_am) aofManifestFree(temp_am);
+    if (new_base_filepath) sdsfree(new_base_filepath);
+    if (new_incr_filepath) sdsfree(new_incr_filepath);
+    if (newfd != -1) close(newfd);
+    return C_ERR;
+}
+
 /* This is a wrapper to the write syscall in order to retry on short writes
  * or if the syscall gets interrupted. It could look strange that we retry
  * on short writes given that we are writing to a block device: normally if
