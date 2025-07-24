@@ -181,7 +181,7 @@ int ldbStartSession(client *c) {
 
     /* First argument of EVAL is the script itself. We split it into different
      * lines since this is the way the debugger accesses the source code. */
-    sds srcstring = sdsdup(c->argv[1]->ptr);
+    sds srcstring = sdsdup(objectGetVal(c->argv[1]));
     size_t srclen = sdslen(srcstring);
     while (srclen && (srcstring[srclen - 1] == '\n' || srcstring[srclen - 1] == '\r')) {
         srcstring[--srclen] = '\0';

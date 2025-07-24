@@ -1,0 +1,173 @@
+src/cluster_legacy.c
+  7329, 40: strcasecmp(c->argv[3]->ptr, "importing")) {
+  7332, 40: strcasecmp(c->argv[3]->ptr, "stable")) {
+  7337, 40: strcasecmp(c->argv[3]->ptr, "node")) {
+  7793, 40: strcasecmp(c->argv[1]->ptr, "migrateslots") && c->argc > 3) {
+  7796, 40: strcasecmp(c->argv[1]->ptr, "getslotmigrations") && c->argc == 2) {
+  7799, 40: strcasecmp(c->argv[1]->ptr, "cancelslotmigrations") && c->argc == 2) {
+  7802, 40: strcasecmp(c->argv[1]->ptr, "syncslots") && c->argc > 2) {
+
+src/db.c
+  228, 43: objectSetKeyAndExpire(val, key->ptr, -1);
+  496, 81: expires, dict_index, key->ptr);
+  499, 85: expires, dict_index, key->ptr));
+
+src/debug.c
+  336, 40:  je_mallctl(argv[0]->ptr, &old, &zz, argc > 1 ? &val : NULL, argc > 1 ? sz : 0))) {
+  339, 49:  je_mallctl(argv[0]->ptr, NULL, 0, &val, sz))) {
+  370, 37:  je_mallctl(argv[0]->ptr, &old, &sz, NULL, 0))) {
+  378, 30: char *val = argv[1]->ptr;
+  381, 36:  je_mallctl(argv[0]->ptr, NULL, 0, valref, sz);
+  629, 40: strcasecmp(c->argv[1]->ptr, "slotmigration")) {
+  630, 37: strcasecmp(c->argv[2]->ptr, "prevent-pause")) {
+  631, 74: debug_slot_migration_prevent_pause = atoi(c->argv[3]->ptr);
+  632, 44: strcasecmp(c->argv[2]->ptr, "prevent-failover")) {
+  633, 77: debug_slot_migration_prevent_failover = atoi(c->argv[3]->ptr);
+  639, 40: strcasecmp(c->argv[1]->ptr, "slotmigration")) {
+  640, 37: strcasecmp(c->argv[2]->ptr, "prevent-pause")) {
+  641, 74: debug_slot_migration_prevent_pause = atoi(c->argv[3]->ptr);
+  642, 44: strcasecmp(c->argv[2]->ptr, "prevent-failover")) {
+  643, 77: debug_slot_migration_prevent_failover = atoi(c->argv[3]->ptr);
+  649, 40: strcasecmp(c->argv[1]->ptr, "object") && (c->argc == 3 || c->argc == 4)) {
+  1026, 40: strcasecmp(c->argv[1]->ptr, "mallctl") && c->argc >= 3) {
+  1029, 40: strcasecmp(c->argv[1]->ptr, "mallctl-str") && c->argc >= 3) {
+
+src/defrag.c
+  402, 21:                 ob->ptr = ql; /* bookmark creation may have re-allocated the quicklist */
+  487, 25:  hashtable *ht = ob->ptr;
+
+src/expire.c
+  676, 33: char *opt = c->argv[j]->ptr;
+
+src/module.c
+  5375, 54: hashTypeSet(key->value, field->ptr, value->ptr, EXPIRY_NONE, low_flags);
+  5375, 66: value, field->ptr, value->ptr, EXPIRY_NONE, low_flags);
+  7105, 93: " : (char *)io->key->ptr) : "(null)");
+
+src/networking.c
+  4232, 48: strcasecmp(c->argv[index]->ptr, "not-id")) {
+  4242, 48: string2ll(c->argv[index]->ptr, sdslen(c->argv[index]->ptr), &not_id)) {
+  4242, 76: sdslen(c->argv[index]->ptr), &not_id)) {
+  4254, 48: strcasecmp(c->argv[index]->ptr, "maxage") && moreargs) {
+  4274, 48: strcasecmp(c->argv[index]->ptr, "not-type") && moreargs) {
+  4275, 72: getClientTypeByName(c->argv[index + 1]->ptr);
+  4277, 96: )c->argv[index + 1]->ptr);
+  4281, 48: strcasecmp(c->argv[index]->ptr, "not-type") && moreargs) {
+  4282, 72: getClientTypeByName(c->argv[index + 1]->ptr);
+  4284, 96: )c->argv[index + 1]->ptr);
+  4288, 48: strcasecmp(c->argv[index]->ptr, "addr") && moreargs) {
+  4289, 48:  c->argv[index + 1]->ptr;
+  4291, 48: strcasecmp(c->argv[index]->ptr, "not-addr") && moreargs) {
+  4292, 52:  c->argv[index + 1]->ptr;
+  4294, 48: strcasecmp(c->argv[index]->ptr, "laddr") && moreargs) {
+  4295, 49:  c->argv[index + 1]->ptr;
+  4297, 48: strcasecmp(c->argv[index]->ptr, "not-laddr") && moreargs) {
+  4298, 53:  c->argv[index + 1]->ptr;
+  4300, 48: strcasecmp(c->argv[index]->ptr, "user") && moreargs) {
+  4301, 65: ACLGetUserByName(c->argv[index + 1]->ptr, sdslen(c->argv[index + 1]->ptr));
+  4301, 97: sdslen(c->argv[index + 1]->ptr));
+  4307, 48: strcasecmp(c->argv[index]->ptr, "not-user") && moreargs) {
+  4308, 69: ACLGetUserByName(c->argv[index + 1]->ptr, sdslen(c->argv[index + 1]->ptr));
+  4308, 101: sdslen(c->argv[index + 1]->ptr));
+  4310, 89: )c->argv[index + 1]->ptr);
+  4314, 48: strcasecmp(c->argv[index]->ptr, "not-user") && moreargs) {
+  4315, 69: ACLGetUserByName(c->argv[index + 1]->ptr, sdslen(c->argv[index + 1]->ptr));
+  4315, 101: sdslen(c->argv[index + 1]->ptr));
+  4317, 89: )c->argv[index + 1]->ptr);
+  4321, 48: strcasecmp(c->argv[index]->ptr, "skipme") && moreargs) {
+  4322, 49: strcasecmp(c->argv[index + 1]->ptr, "yes")) {
+  4351, 48: strcasecmp(c->argv[index]->ptr, "not-flags") && moreargs) {
+  4352, 60: sdsnew(c->argv[index + 1]->ptr);
+  4358, 48: strcasecmp(c->argv[index]->ptr, "name") && moreargs) {
+  4359, 48:  c->argv[index + 1]->ptr;
+  4361, 48: strcasecmp(c->argv[index]->ptr, "not-name") && moreargs) {
+  4362, 52:  c->argv[index + 1]->ptr;
+  4364, 48: strcasecmp(c->argv[index]->ptr, "lib-name") && moreargs) {
+  4368, 48: strcasecmp(c->argv[index]->ptr, "not-lib-name") && moreargs) {
+  4372, 48: strcasecmp(c->argv[index]->ptr, "lib-ver") && moreargs) {
+  4376, 48: strcasecmp(c->argv[index]->ptr, "not-lib-ver") && moreargs) {
+  4380, 48: strcasecmp(c->argv[index]->ptr, "db") && moreargs) {
+  4391, 48: strcasecmp(c->argv[index]->ptr, "not-db") && moreargs) {
+  4402, 48: strcasecmp(c->argv[index]->ptr, "capa") && moreargs) {
+  4403, 55: sdsnew(c->argv[index + 1]->ptr);
+  4409, 48: strcasecmp(c->argv[index]->ptr, "not-capa") && moreargs) {
+  4410, 59: sdsnew(c->argv[index + 1]->ptr);
+  4416, 48: strcasecmp(c->argv[index]->ptr, "ip") && moreargs) {
+  4417, 53: sdsnew(c->argv[index + 1]->ptr);
+  4419, 48: strcasecmp(c->argv[index]->ptr, "not-ip") && moreargs) {
+  4420, 57: sdsnew(c->argv[index + 1]->ptr);
+  4507, 43: name && client->name->ptr && strcmp(client->name->ptr, client_filter->not_name) == 0) {
+  4507, 71: strcmp(client->name->ptr, client_filter->not_name) == 0) {
+
+src/object.c
+  253, 15:     return o->ptr;
+  298, 8:     o->ptr = val;
+  547, 42: hashtableRelease((hashtable *)o->ptr);
+  549, 43: OBJ_ENCODING_LISTPACK: lpFree(o->ptr); break;
+
+src/rdb.c
+  2145, 34:      !lpSafeToAdd(o->ptr, sdslen(field) + sdslen(value)))) {
+
+src/server.c
+  3403, 59: hashtableFind(commands, argv[0]->ptr, &entry);
+  7405, 33: char *opt = c->argv[j]->ptr;
+
+src/server.h
+  804, 11:     void *ptr;
+
+src/t_hash.c
+  61, 46: hashtableMetadata(o->ptr);
+  84, 29:  hashtableSetType(o->ptr, ignore ? &hashHashtableType : &hashWithVolatileItemsHashtableType);
+  90, 46: hashtableMetadata(o->ptr);
+  100, 46: hashtableMetadata(o->ptr);
+  236, 26:     hashtableFind(o->ptr, field, &entry);
+  263, 30: if (hashtableFind(o->ptr, field, &found_element)) {
+  458, 24:   hashtable *ht = o->ptr;
+  516, 24:   hashtable *ht = o->ptr;
+  546, 20:                 o->ptr = zl;
+  551, 28:   hashtable *ht = o->ptr;
+  625, 27:    zl = hi->subject->ptr;
+  801, 65: const hashtable *)o->ptr));
+  847, 47: hashtableFairRandomEntry(hashobj->ptr, &e);
+  891, 41: hashTypeGetValue(o, c->argv[2]->ptr, &vstr, &vlen, &value, &expiry) == C_OK) {
+  910, 32: hashTypeSet(o, c->argv[2]->ptr, new, expiry, HASH_SET_TAKE_VALUE);
+  933, 41: hashTypeGetValue(o, c->argv[2]->ptr, &vstr, &vlen, &ll, &expiry) == C_OK) {
+  955, 32: hashTypeSet(o, c->argv[2]->ptr, new, expiry, HASH_SET_TAKE_VALUE);
+  996, 43: addHashFieldToReply(c, o, c->argv[2]->ptr);
+  1089, 39: hashTypeExists(o, c->argv[2]->ptr)) {
+  1094, 36: hashTypeSet(o, c->argv[2]->ptr, c->argv[3]->ptr, EXPIRY_NONE, HASH_SET_COPY | HASH_SET_KEEP_EXPIRY);
+  1094, 53: 2]->ptr, c->argv[3]->ptr, EXPIRY_NONE, HASH_SET_COPY | HASH_SET_KEEP_EXPIRY);
+  1118, 48: hashTypeSet(o, c->argv[i]->ptr, c->argv[i + 1]->ptr, EXPIRY_NONE, HASH_SET_COPY);
+  1118, 69: ptr, c->argv[i + 1]->ptr, EXPIRY_NONE, HASH_SET_COPY);
+  1128, 33: cmdname = c->argv[0]->ptr;
+  1198, 48: >argv[fields_index]->ptr, "fields")) {
+  1239, 74: hashTypeExists(o, c->argv[i]->ptr)) ||
+  1240, 75: hashTypeExists(o, c->argv[i]->ptr))) {
+  1258, 47: hashTypeDelete(o, c->argv[i]->ptr)) {
+  1266, 40: hashTypeSet(o, c->argv[i]->ptr, c->argv[i + 1]->ptr, when, set_flags);
+  1266, 61: ptr, c->argv[i + 1]->ptr, when, set_flags);
+  1369, 48: >argv[fields_index]->ptr, "fields")) {
+  1438, 47: addHashFieldToReply(c, o, c->argv[i]->ptr);
+  1440, 53: hashTypeDelete(o, c->argv[i]->ptr);
+  1444, 56: hashTypeSetExpire(o, c->argv[i]->ptr, when, 0) == EXPIRATION_MODIFICATION_SUCCESSFUL;
+  1446, 54: hashTypePersist(o, c->argv[i]->ptr) == EXPIRATION_MODIFICATION_SUCCESSFUL;
+  1549, 47: hashTypeExists(o, c->argv[2]->ptr) ? shared.cone : shared.czero);
+  1626, 48: >argv[fields_index]->ptr, "fields")) {
+  1670, 71: argv[fields_index + i]->ptr)) {
+  1680, 72: argv[fields_index + i]->ptr, when, flag);
+  1774, 63: >argv[fields_index]->ptr);
+  1838, 73: argv[fields_index + i]->ptr, &result) == C_ERR) {
+  1935, 37:  lpRandomPairs(hash->ptr, sample_count, fields, vals);
+  2123, 76: OBJ_ENCODING_HASHTABLE && hashtableSize(o->ptr) > 0);
+  2124, 24:   hashtable *ht = o->ptr;
+  2181, 44: activeDefragAlloc(ob->ptr))) ob->ptr = newzl;
+  2181, 55: activeDefragAlloc(ob->ptr))) ob->ptr = newzl;
+  2195, 29:  hashtable *ht = ob->ptr;
+  2198, 32: if (new_hashtable) ob->ptr = new_hashtable;
+  2205, 29:  hashtable *ht = ob->ptr;
+
+src/t_list.c
+  168, 22:             subject->ptr = (where == LIST_HEAD) ? lpPrependInteger(objectGetVal(subject), (long)objectGetVal(value))
+  171, 22:             subject->ptr = (where == LIST_HEAD) ? lpPrepend(objectGetVal(subject), objectGetVal(value), sdslen(objectGetVal(value)))
+
+
