@@ -45,7 +45,6 @@
 
 #include "sds.h"
 #include "ae.h"
-#include <valkey/valkey.h>
 #ifdef USE_OPENSSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -100,11 +99,11 @@ static struct config {
     int mptcp;
     struct cliSSLconfig sslconfig;
     int numclients;
-    _Atomic int liveclients;
+    _Atomic int liveclients __attribute__((aligned(32)));
     int requests;
-    _Atomic int requests_issued;
-    _Atomic int requests_finished;
-    _Atomic int previous_requests_finished;
+    _Atomic int requests_issued __attribute__((aligned(32)));
+    _Atomic int requests_finished __attribute__((aligned(32)));
+    _Atomic int previous_requests_finished __attribute__((aligned(32)));
     int last_printed_bytes;
     long long previous_tick;
     int keysize;
@@ -136,9 +135,9 @@ static struct config {
     struct serverConfig *server_config;
     struct hdr_histogram *latency_histogram;
     struct hdr_histogram *current_sec_latency_histogram;
-    _Atomic int is_fetching_slots;
-    _Atomic int is_updating_slots;
-    _Atomic int slots_last_update;
+    _Atomic int is_fetching_slots __attribute__((aligned(32)));
+    _Atomic int is_updating_slots __attribute__((aligned(32)));
+    _Atomic int slots_last_update __attribute__((aligned(32)));
     int enable_tracking;
     int num_functions;
     int num_keys_in_fcall;
@@ -146,7 +145,7 @@ static struct config {
     pthread_mutex_t is_updating_slots_mutex;
     int resp3; /* use RESP3 */
     int rps;
-    atomic_uint_fast64_t last_time_ns;
+    atomic_uint_fast64_t last_time_ns __attribute__((aligned(64)));
     uint64_t time_per_token;
     uint64_t time_per_burst;
 } config;
