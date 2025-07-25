@@ -447,7 +447,10 @@ static void scanLaterHash(robj *ob, unsigned long *cursor) {
 static void defragQuicklist(robj *ob) {
     quicklist *ql = objectGetVal(ob), *newql;
     serverAssert(ob->type == OBJ_LIST && ob->encoding == OBJ_ENCODING_QUICKLIST);
-    if ((newql = activeDefragAlloc(ql))) objectSetVal(ob, ql = newql);
+    if ((newql = activeDefragAlloc(ql))) {
+        ql = newql;
+        objectSetVal(ob, newql);
+    }
     if (ql->len > server.active_defrag_max_scan_fields)
         defragLater(ob);
     else
@@ -461,7 +464,10 @@ static void defragZsetSkiplist(robj *ob) {
     zset *newzs;
     zskiplist *newzsl;
     struct zskiplistNode *newheader;
-    if ((newzs = activeDefragAlloc(zs))) objectSetVal(ob, zs = newzs);
+    if ((newzs = activeDefragAlloc(zs))) {
+        zs = newzs;
+        objectSetVal(ob, newzs);
+    }
     if ((newzsl = activeDefragAlloc(zs->zsl))) zs->zsl = newzsl;
     if ((newheader = activeDefragAlloc(zs->zsl->header))) zs->zsl->header = newheader;
 
@@ -647,7 +653,10 @@ static void defragStream(robj *ob) {
     stream *s = objectGetVal(ob), *news;
 
     /* handle the main struct */
-    if ((news = activeDefragAlloc(s))) objectSetVal(ob, s = news);
+    if ((news = activeDefragAlloc(s))) {
+        s = news;
+        objectSetVal(ob, news);
+    }
 
     if (raxSize(s->rax) > server.active_defrag_max_scan_fields) {
         rax *newrax = activeDefragAlloc(s->rax);

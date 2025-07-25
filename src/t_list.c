@@ -164,12 +164,18 @@ void listTypePush(robj *subject, robj *value, int where) {
             quicklistPush(objectGetVal(subject), objectGetVal(value), sdslen(objectGetVal(value)), pos);
         }
     } else if (subject->encoding == OBJ_ENCODING_LISTPACK) {
+        unsigned char *subject_val = objectGetVal(subject);
+        void *value_val = objectGetVal(value);
         if (value->encoding == OBJ_ENCODING_INT) {
-            subject->ptr = (where == LIST_HEAD) ? lpPrependInteger(objectGetVal(subject), (long)objectGetVal(value))
-                                                : lpAppendInteger(objectGetVal(subject), (long)objectGetVal(value));
+            if (where == LIST_HEAD)
+                objectSetVal(subject, lpPrependInteger(subject_val, (long)value_val));
+            else
+                objectSetVal(subject, lpAppendInteger(subject_val, (long)value_val));
         } else {
-            subject->ptr = (where == LIST_HEAD) ? lpPrepend(objectGetVal(subject), objectGetVal(value), sdslen(objectGetVal(value)))
-                                                : lpAppend(objectGetVal(subject), objectGetVal(value), sdslen(objectGetVal(value)));
+            if (where == LIST_HEAD)
+                objectSetVal(subject, lpPrepend(subject_val, value_val, sdslen(value_val)));
+            else
+                objectSetVal(subject, lpAppend(subject_val, value_val, sdslen(value_val)));
         }
     } else {
         serverPanic("Unknown list encoding");
