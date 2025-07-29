@@ -423,13 +423,13 @@ void clusterCommandSyncSlotsEstablish(client *c) {
      * compatibility. */
     int i = 3;
     while (i < c->argc) {
-        if (!strcasecmp(c->argv[i]->ptr, "source")) {
+        if (!strcasecmp(objectGetVal(c->argv[i]), "source")) {
             if (source_node || i + 1 >= c->argc ||
-                sdslen(c->argv[i + 1]->ptr) != CLUSTER_NAMELEN) {
+                sdslen(objectGetVal(c->argv[i + 1])) != CLUSTER_NAMELEN) {
                 addReplyErrorObject(c, shared.syntaxerr);
                 goto cleanup;
             }
-            source_node = clusterLookupNode(c->argv[4]->ptr, CLUSTER_NAMELEN);
+            source_node = clusterLookupNode(objectGetVal(c->argv[4]), CLUSTER_NAMELEN);
             if (!source_node) {
                 addReplyError(c, "Target node does not know the source node");
                 goto cleanup;
@@ -441,17 +441,17 @@ void clusterCommandSyncSlotsEstablish(client *c) {
             i += 2;
             continue;
         }
-        if (!strcasecmp(c->argv[i]->ptr, "name")) {
+        if (!strcasecmp(objectGetVal(c->argv[i]), "name")) {
             if (name || i + 1 >= c->argc ||
-                sdslen(c->argv[i + 1]->ptr) != CLUSTER_NAMELEN) {
+                sdslen(objectGetVal(c->argv[i + 1])) != CLUSTER_NAMELEN) {
                 addReplyErrorObject(c, shared.syntaxerr);
                 goto cleanup;
             }
-            name = c->argv[i + 1]->ptr;
+            name = objectGetVal(c->argv[i + 1]);
             i += 2;
             continue;
         }
-        if (!strcasecmp(c->argv[i]->ptr, "slotsrange")) {
+        if (!strcasecmp(objectGetVal(c->argv[i]), "slotsrange")) {
             if (slot_ranges) {
                 addReplyErrorObject(c, shared.syntaxerr);
                 goto cleanup;
@@ -838,7 +838,7 @@ void clusterCommandMigrateSlots(client *c) {
     list *slot_ranges = NULL;
 
     while (curr_index < c->argc) {
-        if (strcasecmp(c->argv[curr_index]->ptr, "slotsrange")) {
+        if (strcasecmp(objectGetVal(c->argv[curr_index]), "slotsrange")) {
             addReplyErrorObject(c, shared.syntaxerr);
             goto cleanup;
         }
@@ -879,21 +879,21 @@ void clusterCommandMigrateSlots(client *c) {
         }
 
         if (curr_index + 1 >= c->argc ||
-            strcasecmp(c->argv[curr_index]->ptr, "node")) {
+            strcasecmp(objectGetVal(c->argv[curr_index]), "node")) {
             addReplyErrorObject(c, shared.syntaxerr);
             goto cleanup;
         }
         curr_index++;
-        if (sdslen(c->argv[curr_index]->ptr) != CLUSTER_NAMELEN) {
+        if (sdslen(objectGetVal(c->argv[curr_index])) != CLUSTER_NAMELEN) {
             addReplyErrorFormat(c, "Invalid node name: %s",
-                                (sds)c->argv[curr_index]->ptr);
+                                (sds)objectGetVal(c->argv[curr_index]));
             goto cleanup;
         }
-        clusterNode *target_node = clusterLookupNode(c->argv[curr_index]->ptr,
+        clusterNode *target_node = clusterLookupNode(objectGetVal(c->argv[curr_index]),
                                                      CLUSTER_NAMELEN);
         if (!target_node) {
             addReplyErrorFormat(c, "Unknown node name: %s",
-                                (sds)c->argv[curr_index]->ptr);
+                                (sds)objectGetVal(c->argv[curr_index]));
             goto cleanup;
         }
         if (target_node == server.cluster->myself) {
@@ -2096,25 +2096,25 @@ void clusterCommandSyncSlots(client *c) {
          * primary. */
         return;
     }
-    if (!strcasecmp(c->argv[2]->ptr, "establish")) {
+    if (!strcasecmp(objectGetVal(c->argv[2]), "establish")) {
         /* CLUSTER SYNCSLOTS ESTABLISH <args> */
         clusterCommandSyncSlotsEstablish(c);
-    } else if (!strcasecmp(c->argv[2]->ptr, "snapshot-eof")) {
+    } else if (!strcasecmp(objectGetVal(c->argv[2]), "snapshot-eof")) {
         /* CLUSTER SYNCSLOTS SNAPSHOT-EOF */
         clusterCommandSyncSlotsSnapshotEof(c);
-    } else if (!strcasecmp(c->argv[2]->ptr, "request-pause")) {
+    } else if (!strcasecmp(objectGetVal(c->argv[2]), "request-pause")) {
         /* CLUSTER SYNCSLOTS REQUEST-PAUSE */
         clusterCommandSyncSlotsRequestPause(c);
-    } else if (!strcasecmp(c->argv[2]->ptr, "paused")) {
+    } else if (!strcasecmp(objectGetVal(c->argv[2]), "paused")) {
         /* CLUSTER SYNCSLOTS PAUSED */
         clusterCommandSyncSlotsPaused(c);
-    } else if (!strcasecmp(c->argv[2]->ptr, "request-failover")) {
+    } else if (!strcasecmp(objectGetVal(c->argv[2]), "request-failover")) {
         /* CLUSTER SYNCSLOTS REQUEST-FAILOVER */
         clusterCommandSyncSlotsRequestFailover(c);
-    } else if (!strcasecmp(c->argv[2]->ptr, "failover-granted")) {
+    } else if (!strcasecmp(objectGetVal(c->argv[2]), "failover-granted")) {
         /* CLUSTER SYNCSLOTS FAILOVER-GRANTED */
         clusterCommandSyncSlotsFailoverGranted(c);
-    } else if (!strcasecmp(c->argv[2]->ptr, "ack")) {
+    } else if (!strcasecmp(objectGetVal(c->argv[2]), "ack")) {
         /* CLUSTER SYNCSLOTS ACK */
         clusterCommandSyncSlotsAck(c);
     } else {
