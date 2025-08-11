@@ -430,4 +430,11 @@ struct clusterState {
     slotStat slot_stats[CLUSTER_SLOTS];
 };
 
+/* Struct used for storing module traffic statistics. */
+typedef struct {
+    uint64_t module_id;
+    long long sent_bytes;
+    long long received_bytes;
+} moduleClusterTrafficEntry;
+
 #endif // CLUSTER_LEGACY_H
