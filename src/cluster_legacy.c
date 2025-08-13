@@ -3541,7 +3541,7 @@ int clusterProcessPacket(clusterLink *link) {
                  * with an epoch smaller than or equal to the incoming claim. This
                  * allows us to start a new election as soon as possible. */
                 server.cluster->failover_auth_time = 0;
-                serverLog(LL_WARNING,
+                serverLog(LL_NOTICE,
                           "Failover election in progress for epoch %llu, but received a claim from "
                           "node %.40s (%s) with an equal or higher epoch %llu. Resetting the election "
                           "since we cannot win an election in the past.",
@@ -3781,6 +3781,18 @@ int clusterProcessPacket(clusterLink *link) {
                 /* Node is a replica. */
                 clusterNode *sender_claimed_primary = clusterLookupNode(hdr->replicaof, CLUSTER_NAMELEN);
 
+                if (sender_claimed_primary && nodeEpoch(sender_claimed_primary) > sender_claimed_config_epoch) {
+                    serverLog(LL_NOTICE,
+                              "Ignore stale message from %.40s (%s) in shard %.40s;"
+                              " gossip config epoch: %llu, current config epoch: %llu",
+                              sender->name, sender->human_nodename, sender->shard_id,
+                              (unsigned long long)sender_claimed_config_epoch,
+                              (unsigned long long)nodeEpoch(sender_claimed_primary));
+                    /* This packet is stale so we avoid processing it anymore. Otherwise
+                     * this may cause a primary-replica chain issue. */
+                    return 1;
+                }
+
                 if (sender_last_reported_as_primary) {
                     serverLog(LL_DEBUG, "node %.40s (%s) announces that it is a %s in shard %.40s", sender->name,
                               sender->human_nodename, sender_claims_to_be_primary ? "primary" : "replica", sender->shard_id);
@@ -3788,18 +3800,8 @@ int clusterProcessPacket(clusterLink *link) {
                     /* Primary turned into a replica! Reconfigure the node. */
                     if (sender_claimed_primary && areInSameShard(sender_claimed_primary, sender)) {
                         /* `sender` was a primary and was in the same shard as its new primary */
-                        if (nodeEpoch(sender_claimed_primary) > sender_claimed_config_epoch) {
-                            serverLog(LL_NOTICE,
-                                      "Ignore stale message from %.40s (%s) in shard %.40s;"
-                                      " gossip config epoch: %llu, current config epoch: %llu",
-                                      sender->name, sender->human_nodename, sender->shard_id,
-                                      (unsigned long long)sender_claimed_config_epoch,
-                                      (unsigned long long)nodeEpoch(sender_claimed_primary));
-                            /* This packet is stale so we avoid processing it anymore. Otherwise
-                             * this may cause a primary-replica chain issue. */
-                            return 1;
-                        } else if (nodeIsReplica(sender_claimed_primary) &&
-                                   sender_claimed_primary->replicaof == sender) {
+                        if (nodeIsReplica(sender_claimed_primary) &&
+                            sender_claimed_primary->replicaof == sender) {
                             /* A failover occurred in the shard where `sender` belongs to and `sender` is
                              * no longer a primary. Update slot assignment to `sender_claimed_config_epoch`,
                              * which is the new primary in the shard. */
@@ -3853,6 +3855,24 @@ int clusterProcessPacket(clusterLink *link) {
 
                     /* Update config and state. */
                     clusterDoBeforeSleep(CLUSTER_TODO_SAVE_CONFIG | CLUSTER_TODO_UPDATE_STATE | CLUSTER_TODO_FSYNC_CONFIG);
+                }
+
+                if (sender_claimed_primary && nodeIsReplica(sender_claimed_primary)) {
+                    if (nodeIsReplica(myself) && areInSameShard(myself, sender_claimed_primary) &&
+                        server.cluster->failover_auth_time && !server.cluster->failover_auth_sent) {
+                        server.cluster->failover_auth_time = 0;
+                        serverLog(LL_NOTICE,
+                                  "A failover occurred in my shard %.40s, node %.40s (%s) now is the new primary."
+                                  "Resetting the election that have not yet begun due to delays.",
+                                  myself->shard_id, sender_claimed_primary->name, sender_claimed_primary->human_nodename);
+                        clusterDoBeforeSleep(CLUSTER_TODO_HANDLE_FAILOVER);
+                    }
+
+                    /* `primary` is still a `replica` in this observer node's view;
+                     * update its role and configEpoch */
+                    clusterSetNodeAsPrimary(sender_claimed_primary);
+                    sender_claimed_primary->configEpoch = sender_claimed_config_epoch;
+                    clusterDoBeforeSleep(CLUSTER_TODO_SAVE_CONFIG | CLUSTER_TODO_FSYNC_CONFIG | CLUSTER_TODO_UPDATE_STATE);
                 }
 
                 /* Primary node changed for this replica? */
