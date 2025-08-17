@@ -249,6 +249,7 @@ static struct config {
     int get_functions_rdb_mode;
     int stat_mode;
     int scan_mode;
+    int scan_unlink_mode; /* Enable UNLINK during scan */
     int count;
     int intrinsic_latency_mode;
     int intrinsic_latency_duration;
@@ -2666,6 +2667,8 @@ static int parseOptions(int argc, char **argv) {
             config.stat_mode = 1;
         } else if (!strcmp(argv[i], "--scan")) {
             config.scan_mode = 1;
+        } else if (!strcmp(argv[i], "--unlink")) {
+            config.scan_unlink_mode = 1;
         } else if (!strcmp(argv[i], "--pattern") && !lastarg) {
             sdsfree(config.pattern);
             config.pattern = sdsnew(argv[++i]);
@@ -3070,6 +3073,7 @@ static void usage(int err) {
             "  --hotkeys-count <n> Sample keys looking for the n most hot keys.\n"
             "                     Only works when maxmemory-policy is *lfu.\n"
             "  --scan             List all keys using the SCAN command.\n"
+            "  --unlink           Delete keys while scanning (use with --scan). Safe async deletion.\n"
             "  --pattern <pat>    Keys pattern when using the --scan, --bigkeys or --hotkeys\n"
             "                     options (default: *).\n"
             "  --count <count>    Count option when using the --scan, --bigkeys or --hotkeys (default: 10).\n"
@@ -3105,6 +3109,8 @@ static void usage(int err) {
             "  valkey-cli --eval myscript.lua key1 key2 , arg1 arg2 arg3\n"
             "  valkey-cli --scan --pattern '*:12345*'\n"
             "  valkey-cli --scan --pattern '*:12345*' --count 100\n"
+            "  valkey-cli --scan --pattern '*:12345*' --unlink\n"
+            "  valkey-cli --scan --pattern '*:12345*' --count 100 --unlink\n"
             "\n"
             "  (Note: when using --eval the comma separates KEYS[] from ARGV[] items)\n"
             "\n"
@@ -8697,11 +8703,20 @@ static void pipeMode(void) {
 static valkeyReply *sendScan(unsigned long long *it) {
     valkeyReply *reply;
 
-    if (config.pattern)
-        reply = valkeyCommand(context, "SCAN %llu MATCH %b COUNT %d", *it, config.pattern, sdslen(config.pattern),
-                              config.count);
-    else
-        reply = valkeyCommand(context, "SCAN %llu COUNT %d", *it, config.count);
+    /* Build SCAN command with optional UNLINK parameter */
+    if (config.scan_unlink_mode) {
+        if (config.pattern)
+            reply = valkeyCommand(context, "SCAN %llu MATCH %b COUNT %d UNLINK", *it, config.pattern,
+                                  sdslen(config.pattern), config.count);
+        else
+            reply = valkeyCommand(context, "SCAN %llu COUNT %d UNLINK", *it, config.count);
+    } else {
+        if (config.pattern)
+            reply = valkeyCommand(context, "SCAN %llu MATCH %b COUNT %d", *it, config.pattern,
+                                  sdslen(config.pattern), config.count);
+        else
+            reply = valkeyCommand(context, "SCAN %llu COUNT %d", *it, config.count);
+    }
 
     /* Handle any error conditions */
     if (reply == NULL) {
@@ -8713,14 +8728,29 @@ static valkeyReply *sendScan(unsigned long long *it) {
     } else if (reply->type != VALKEY_REPLY_ARRAY) {
         fprintf(stderr, "Non ARRAY response from SCAN!\n");
         exit(1);
-    } else if (reply->elements != 2) {
-        fprintf(stderr, "Invalid element count from SCAN!\n");
-        exit(1);
+    }
+
+    /* Validate response format based on mode */
+    if (config.scan_unlink_mode) {
+        /* Unlink mode expects 3 elements: [cursor, unlinked_keys, unlinked_count] */
+        if (reply->elements != 3) {
+            fprintf(stderr, "Invalid element count from SCAN UNLINK! Expected 3, got %zu\n", reply->elements);
+            exit(1);
+        }
+    } else {
+        /* Standard mode expects 2 elements: [cursor, keys] */
+        if (reply->elements != 2) {
+            fprintf(stderr, "Invalid element count from SCAN! Expected 2, got %zu\n", reply->elements);
+            exit(1);
+        }
     }
 
     /* Validate our types are correct */
     assert(reply->element[0]->type == VALKEY_REPLY_STRING);
     assert(reply->element[1]->type == VALKEY_REPLY_ARRAY);
+    if (config.scan_unlink_mode) {
+        assert(reply->element[2]->type == VALKEY_REPLY_INTEGER);
+    }
 
     /* Update iterator */
     *it = strtoull(reply->element[0]->str, NULL, 10);
@@ -9358,22 +9388,63 @@ static void statMode(void) {
 static void scanMode(void) {
     valkeyReply *reply;
     unsigned long long cur = 0;
+    long long total_unlinked = 0; /* Track total unlinked keys across all iterations */
+
     signal(SIGINT, longStatLoopModeStop);
+
+    if (config.scan_unlink_mode) {
+        printf("Scanning and async deleting keys matching pattern: %s\n",
+               config.pattern ? config.pattern : "*");
+    }
+
     do {
         reply = sendScan(&cur);
-        for (unsigned int j = 0; j < reply->element[1]->elements; j++) {
-            if (config.output == OUTPUT_STANDARD) {
-                sds out =
-                    sdscatrepr(sdsempty(), reply->element[1]->element[j]->str, reply->element[1]->element[j]->len);
-                printf("%s\n", out);
-                sdsfree(out);
-            } else {
-                printf("%s\n", reply->element[1]->element[j]->str);
+
+        if (config.scan_unlink_mode) {
+            /* Handle 3-element response: [cursor, unlinked_keys, unlinked_count] */
+            valkeyReply *unlinked_keys = reply->element[1];
+            long long unlinked_count = reply->element[2]->integer;
+            total_unlinked += unlinked_count;
+
+            /* Display unlinked keys */
+            for (unsigned int j = 0; j < unlinked_keys->elements; j++) {
+                if (config.output == OUTPUT_STANDARD) {
+                    sds out = sdscatrepr(sdsempty(), unlinked_keys->element[j]->str,
+                                         unlinked_keys->element[j]->len);
+                    printf("Unlinked: %s\n", out);
+                    sdsfree(out);
+                } else {
+                    printf("Unlinked: %s\n", unlinked_keys->element[j]->str);
+                }
+            }
+
+            /* Show progress if we have unlinked keys in this iteration */
+            if (unlinked_keys->elements > 0 || unlinked_count > 0) {
+                printf("Iteration stats: %zu keys unlinked, total unlinked so far: %lld\n",
+                       unlinked_keys->elements, total_unlinked);
+            }
+        } else {
+            /* Handle standard 2-element response: [cursor, keys] */
+            for (unsigned int j = 0; j < reply->element[1]->elements; j++) {
+                if (config.output == OUTPUT_STANDARD) {
+                    sds out =
+                        sdscatrepr(sdsempty(), reply->element[1]->element[j]->str,
+                                   reply->element[1]->element[j]->len);
+                    printf("%s\n", out);
+                    sdsfree(out);
+                } else {
+                    printf("%s\n", reply->element[1]->element[j]->str);
+                }
             }
         }
+
         freeReplyObject(reply);
         if (config.interval) usleep(config.interval);
     } while (force_cancel_loop == 0 && cur != 0);
+
+    if (config.scan_unlink_mode) {
+        printf("\nScan and async delete operation completed. Total keys unlinked: %lld\n", total_unlinked);
+    }
 
     exit(0);
 }
@@ -9660,6 +9731,7 @@ int main(int argc, char **argv) {
     config.get_functions_rdb_mode = 0;
     config.stat_mode = 0;
     config.scan_mode = 0;
+    config.scan_unlink_mode = 0;
     config.count = 10;
     config.intrinsic_latency_mode = 0;
     config.pattern = NULL;

@@ -979,13 +979,16 @@ void keysCommand(client *c) {
 
 /* Data used by the dict scan callback. */
 typedef struct {
-    vector *result; /* elements that collect from dict */
-    robj *o;        /* o must be a hash/set/zset object, NULL means current db */
-    serverDb *db;   /* database currently being scanned */
-    long long type; /* the particular type when scan the db */
-    sds pattern;    /* pattern string, NULL means no pattern */
-    long sampled;   /* cumulative number of keys sampled */
-    int only_keys;  /* set to 1 means to return keys only */
+    vector *result;      /* elements that collect from dict */
+    robj *o;             /* o must be a hash/set/zset object, NULL means current db */
+    serverDb *db;        /* database currently being scanned */
+    long long type;      /* the particular type when scan the db */
+    sds pattern;         /* pattern string, NULL means no pattern */
+    long sampled;        /* cumulative number of keys sampled */
+    int only_keys;       /* set to 1 means to return keys only */
+    int unlink_mode;     /* 0=no deletion, 1=async unlink */
+    long unlinked_count; /* count of unlinked keys */
+    client *c;           /* client context for notifications and propagation */
 } scanData;
 
 /* Helper function to compare key type in scan commands */
@@ -1033,7 +1036,35 @@ void keysScanCallback(void *privdata, void *entry, int didx) {
         }
     }
 
-    /* Keep this key. */
+    /* Handle unlink mode - async delete matching keys */
+    if (data->unlink_mode) {
+        robj *keyobj = createStringObject(key, sdslen(key));
+
+        /* Duplicate the key before deletion to avoid use-after-free */
+        sds key_copy = sdsdup(key);
+
+        /* Unlink the key asynchronously */
+        if (dbAsyncDelete(data->db, keyobj)) {
+            /* Add deleted key to result */
+            sds *item = vectorPush(data->result);
+            *item = key_copy;
+
+            /* Handle notifications and propagation */
+            signalModifiedKey(data->c, data->db, keyobj);
+            notifyKeyspaceEvent(NOTIFY_GENERIC, "del", keyobj, data->db->id);
+            propagateDeletion(data->db, keyobj, 1, didx); /* 1 = lazy/async */
+            server.dirty++;
+            data->unlinked_count++;
+        } else {
+            /* If deletion failed, free the key copy */
+            sdsfree(key_copy);
+        }
+
+        decrRefCount(keyobj);
+        return; /* Don't add to result in normal scan fashion when in unlink mode */
+    }
+
+    /* Keep this key (normal scan mode). */
     sds *item = vectorPush(data->result);
     *item = key;
 }
@@ -1157,7 +1188,8 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
     sds pat = NULL;
     sds typename = NULL;
     long long type = LLONG_MAX;
-    int patlen = 0, use_pattern = 0, only_keys = 0;
+    int patlen = 0, use_pattern = 0, only_keys = 0, unlink_mode = 0;
+    long unlinked_count = 0; /* Track unlinked keys count */
     vector result;
 
     /* Object must be NULL (to iterate keys names), or the type of the object
@@ -1213,13 +1245,20 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
             }
             only_keys = 1;
             i++;
+        } else if (!strcasecmp(c->argv[i]->ptr, "unlink")) {
+            if (o != NULL) {
+                addReplyError(c, "UNLINK option can only be used with database SCAN");
+                return;
+            }
+            unlink_mode = 1;
+            i++;
         } else {
             addReplyErrorObject(c, shared.syntaxerr);
             return;
         }
     }
 
-    /* Step 2: Iterate the collection.
+    /* Step 2.5: Iterate the collection.
      *
      * Note that if the object is encoded with a listpack, intset, or any other
      * representation that is not a hash table, we are sure that it is also
@@ -1234,7 +1273,8 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
      * a shallow copy - a pointer to the actual data in the data structure */
     void (*free_callback)(sds) = sdsfree;
     if (o == NULL) {
-        free_callback = NULL;
+        /* For database scans in unlink mode, we create duplicated strings that need freeing */
+        free_callback = unlink_mode ? sdsfree : NULL;
     } else if (o->type == OBJ_SET && o->encoding == OBJ_ENCODING_HASHTABLE) {
         ht = o->ptr;
         free_callback = NULL;
@@ -1278,6 +1318,9 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
             .pattern = use_pattern ? pat : NULL,
             .sampled = 0,
             .only_keys = only_keys,
+            .unlink_mode = unlink_mode,
+            .unlinked_count = 0,
+            .c = c,
         };
 
         /* A pattern may restrict all matching keys to one cluster slot. */
@@ -1286,6 +1329,7 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
             onlydidx = patternHashSlot(pat, patlen);
         }
         do {
+            unsigned long long old_cursor = cursor;
             /* In cluster mode there is a separate dictionary for each slot.
              * If cursor is empty, we should try exploring next non-empty slot. */
             if (o == NULL) {
@@ -1293,7 +1337,18 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
             } else {
                 cursor = hashtableScan(ht, cursor, hashtableScanCallback, &data);
             }
+
+            /* If we're in unlink mode and found no matches in this iteration,
+             * continue scanning until we either find matches or complete the scan */
+            if (unlink_mode && data.unlinked_count == 0 && cursor != 0 && old_cursor != cursor) {
+                /* Reset the sampled counter to continue scanning when no matches found */
+                data.sampled = 0;
+                continue;
+            }
         } while (cursor && maxiterations-- && data.sampled < count);
+
+        /* Copy the unlinked count from the scan data to the function scope */
+        unlinked_count = data.unlinked_count;
     } else if (o->type == OBJ_SET) {
         char *str;
         char buf[LONG_STR_SIZE];
@@ -1345,15 +1400,35 @@ void scanGenericCommand(client *c, robj *o, unsigned long long cursor) {
     }
 
     /* Step 3: Reply to the client. */
-    addReplyArrayLen(c, 2);
-    addReplyBulkLongLong(c, cursor);
+    if (unlink_mode) {
+        /* Modified response format for UNLINK mode */
+        addReplyArrayLen(c, 3);
+        addReplyBulkLongLong(c, cursor);
 
-    addReplyArrayLen(c, vectorLen(&result));
-    for (uint32_t i = 0; i < vectorLen(&result); i++) {
-        sds *key = vectorGet(&result, i);
-        addReplyBulkCBuffer(c, *key, sdslen(*key));
-        if (free_callback) {
-            free_callback(*key);
+        /* Return unlinked keys array */
+        addReplyArrayLen(c, vectorLen(&result));
+        for (uint32_t i = 0; i < vectorLen(&result); i++) {
+            sds *key = vectorGet(&result, i);
+            addReplyBulkCBuffer(c, *key, sdslen(*key));
+            if (free_callback) {
+                free_callback(*key);
+            }
+        }
+
+        /* Return unlinked count */
+        addReplyLongLong(c, unlinked_count);
+    } else {
+        /* Normal response format */
+        addReplyArrayLen(c, 2);
+        addReplyBulkLongLong(c, cursor);
+
+        addReplyArrayLen(c, vectorLen(&result));
+        for (uint32_t i = 0; i < vectorLen(&result); i++) {
+            sds *key = vectorGet(&result, i);
+            addReplyBulkCBuffer(c, *key, sdslen(*key));
+            if (free_callback) {
+                free_callback(*key);
+            }
         }
     }
 
