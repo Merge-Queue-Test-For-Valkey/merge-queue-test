@@ -802,9 +802,10 @@ struct serverObject {
     unsigned hasembkey : 1;
     unsigned hasembval : 1;
     unsigned refcount : OBJ_REFCOUNT_BITS;
-    void *val_ptr;
+    void *val_ptr; /* Not always present. Use objectGetVal(obj) and
+                    * objectSetVal(obj, val) instead. */
 };
-static_assert(sizeof(struct serverObject) <= 16, "unexpected size - verify struct is packed correctly");
+static_assert(sizeof(struct serverObject) <= 8 + sizeof(void *), "unexpected size - verify struct is packed correctly");
 
 /* The string name for an object's type as listed above
  * Native types are checked against the OBJ_STRING, OBJ_LIST, OBJ_* defines,
@@ -3002,7 +3003,7 @@ void dismissObject(robj *o, size_t dump_size);
 robj *createObject(int type, void *ptr);
 void initObjectLRUOrLFU(robj *o);
 robj *createStringObject(const char *ptr, size_t len);
-robj *createStringObjectFromSds(const sds s);
+robj *createStringObjectFromSds(const_sds s);
 robj *createRawStringObject(const char *ptr, size_t len);
 robj *tryCreateRawStringObject(const char *ptr, size_t len);
 robj *tryCreateStringObject(const char *ptr, size_t len);
@@ -3047,7 +3048,7 @@ void trimStringObjectIfNeeded(robj *o, int trim_small_values);
 #define sdsEncodedObject(objptr) (objptr->encoding == OBJ_ENCODING_RAW || objptr->encoding == OBJ_ENCODING_EMBSTR)
 
 /* Objects with val and/or key embedded */
-robj *objectSetKeyAndExpire(robj *o, sds key, long long expire);
+robj *objectSetKeyAndExpire(robj *o, const_sds key, long long expire);
 robj *objectSetExpire(robj *o, long long expire);
 void objectSetVal(robj *o, void *val);
 void objectUnembedVal(robj *o, void *new_val);

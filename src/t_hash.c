@@ -1013,9 +1013,6 @@ void hmgetCommand(client *c) {
     if (o && hashTypeLength(o) == 0) {
         dbDelete(c->db, c->argv[1]);
     }
-    if (o && hashTypeLength(o) == 0) {
-        dbDelete(c->db, c->argv[1]);
-    }
 }
 
 void hdelCommand(client *c) {

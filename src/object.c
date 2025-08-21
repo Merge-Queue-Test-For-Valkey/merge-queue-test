@@ -53,7 +53,7 @@
 /* Creates an object, optionally with embedded key and expire fields. The key
  * and expire fields can be omitted by passing NULL and -1, respectively.
  * This function never embeds value. */
-static robj *createUnembeddedObjectWithKeyAndExpire(int type, void *val, const sds key, long long expire) {
+static robj *createUnembeddedObjectWithKeyAndExpire(int type, void *val, const_sds key, long long expire) {
     /* Calculate sizes */
     int has_embkey = key != NULL;
     int has_expire = (expire != -1 ||
@@ -157,7 +157,7 @@ static unsigned char *objectEmbeddedData(const robj *o) {
  * and expire to the new object. LRU is set to 0. */
 static robj *createEmbeddedStringObjectWithKeyAndExpire(const char *val_ptr,
                                                         size_t val_len,
-                                                        const sds key,
+                                                        const_sds key,
                                                         long long expire) {
     /* Calculate sizes */
     int has_embkey = (key != NULL);
@@ -169,7 +169,7 @@ static robj *createEmbeddedStringObjectWithKeyAndExpire(const char *val_ptr,
         val_sds_size = sizeof(void *); /* Ensure it's possible to "unembed" value later */
     }
 
-    ptrdiff_t min_size = sizeof(robj) - sizeof(void *) + val_sds_size; /* reusing 'ptr' memory */
+    size_t min_size = sizeof(robj) - sizeof(void *) + val_sds_size; /* reusing 'ptr' memory */
     if (expire != -1) {
         min_size += sizeof(long long);
     }
@@ -214,13 +214,11 @@ static robj *createEmbeddedStringObjectWithKeyAndExpire(const char *val_ptr,
 
     /* Copy embedded value (EMBSTR) always as SDS TYPE 8. Account for unused
      * memory in the SDS alloc field. */
-    ptrdiff_t remaining_size = bufsize - (data - (char *)(void *)o);
+    size_t remaining_size = bufsize - (data - (char *)(void *)o);
 
     /* max bufsize for SDS_TYPE_8 is 255 */
     assert(val_len <= 255);
-    if (remaining_size > 255) {
-        remaining_size = 255;
-    }
+    assert(remaining_size <= 255);
     sdswrite(data, remaining_size, SDS_TYPE_8, val_ptr, val_len);
 
     return o;
@@ -233,7 +231,7 @@ static robj *createEmbeddedStringObject(const char *ptr, size_t len) {
     return createEmbeddedStringObjectWithKeyAndExpire(ptr, len, NULL, -1);
 }
 
-static bool shouldEmbedStringObject(size_t val_len, sds key, long long expire) {
+static bool shouldEmbedStringObject(size_t val_len, const_sds key, long long expire) {
     /* When to embed? Embed when the sum is up to 64 bytes. There may be better
      * heuristics, e.g. we can look at the jemalloc sizes (16-byte intervals up
      * to 128 bytes). */
@@ -258,11 +256,11 @@ robj *createStringObject(const char *ptr, size_t len) {
 }
 
 /* Similar to createStringObject() but takes an existing SDS as input. */
-robj *createStringObjectFromSds(const sds s) {
+robj *createStringObjectFromSds(const_sds s) {
     return createStringObject(s, sdslen(s));
 }
 
-static robj *createStringObjectWithKeyAndExpire(const char *ptr, size_t len, const sds key, long long expire) {
+static robj *createStringObjectWithKeyAndExpire(const char *ptr, size_t len, const_sds key, long long expire) {
     if (shouldEmbedStringObject(len, key, expire)) {
         return createEmbeddedStringObjectWithKeyAndExpire(ptr, len, key, expire);
     } else {
@@ -283,11 +281,8 @@ void *objectGetVal(const robj *o) {
             data += 1 + hdr_size;                /* +1 for header size byte */
             data += sdslen((const_sds)data) + 1; /* +1 for null terminator */
         }
-        if (o->encoding == OBJ_ENCODING_EMBSTR) {
-            return data + sdsHdrSize(SDS_TYPE_8);
-        } else {
-            return data;
-        }
+        assert(o->encoding == OBJ_ENCODING_EMBSTR);
+        return data + sdsHdrSize(SDS_TYPE_8);
     } else {
         return o->val_ptr;
     }
@@ -362,7 +357,7 @@ void objectUnembedVal(robj *o, void *new_val) {
 /* This functions may reallocate the value. The new allocation is returned and
  * the old object's reference counter is decremented and possibly freed. Use the
  * returned object instead of 'o' after calling this function. */
-robj *objectSetKeyAndExpire(robj *o, sds key, long long expire) {
+robj *objectSetKeyAndExpire(robj *o, const_sds key, long long expire) {
     if (o->type == OBJ_STRING && o->encoding == OBJ_ENCODING_EMBSTR) {
         robj *new = createStringObjectWithKeyAndExpire(objectGetVal(o), sdslen(objectGetVal(o)), key, expire);
         new->lru = o->lru;

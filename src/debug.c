@@ -636,16 +636,6 @@ void debugCommand(client *c) {
             return;
         }
         addReply(c, shared.ok);
-    } else if (!strcasecmp(objectGetVal(c->argv[1]), "slotmigration")) {
-        if (!strcasecmp(objectGetVal(c->argv[2]), "prevent-pause")) {
-            server.debug_slot_migration_prevent_pause = atoi(objectGetVal(c->argv[3]));
-        } else if (!strcasecmp(objectGetVal(c->argv[2]), "prevent-failover")) {
-            server.debug_slot_migration_prevent_failover = atoi(objectGetVal(c->argv[3]));
-        } else {
-            addReplySubcommandSyntaxError(c);
-            return;
-        }
-        addReply(c, shared.ok);
     } else if (!strcasecmp(objectGetVal(c->argv[1]), "object") && (c->argc == 3 || c->argc == 4)) {
         robj *val;
         char *strenc;

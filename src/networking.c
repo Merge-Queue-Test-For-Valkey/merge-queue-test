@@ -3885,14 +3885,14 @@ static int addKeysToIncrFindBatch(client *c,
         int kvstore_idx = 0;
         if (server.cluster_enabled) {
             robj *first_key = argv[result.keys[0].pos];
-            kvstore_idx = keyHashSlot(first_key->ptr, sdslen(first_key->ptr));
+            kvstore_idx = keyHashSlot(objectGetVal(first_key), sdslen(objectGetVal(first_key)));
         }
         hashtable *ht = kvstoreGetHashtable(c->db->keys, kvstore_idx);
         if (ht != NULL) {
             for (int i = 0; i < numkeys && num < max; i++) {
                 hashtableIncrementalFindState *incr_state = &incr_states[num++];
                 robj *keyobj = argv[result.keys[i].pos];
-                hashtableIncrementalFindInit(incr_state, ht, keyobj->ptr);
+                hashtableIncrementalFindInit(incr_state, ht, objectGetVal(keyobj));
             }
         }
     }
@@ -3961,7 +3961,7 @@ static void prefetchCommandQueueKeys(client *c) {
             /* TODO? Prefetch all types and encodings except OBJ_ENCODING_EMBSTR
              * and OBJ_ENCODING_INT. */
             if (val->encoding == OBJ_ENCODING_RAW && val->type == OBJ_STRING) {
-                valkey_prefetch(val->ptr);
+                valkey_prefetch(objectGetVal(val));
             }
         }
     }
@@ -4523,13 +4523,6 @@ static int parseClientFiltersOrReply(client *c, int index, clientFilter *filter)
                 return C_ERR;
             }
             index += 2;
-        } else if (!strcasecmp(objectGetVal(c->argv[index]), "not-type") && moreargs) {
-            filter->not_type = getClientTypeByName(objectGetVal(c->argv[index + 1]));
-            if (filter->not_type == -1) {
-                addReplyErrorFormat(c, "Unknown client type '%s'", (char *)objectGetVal(c->argv[index + 1]));
-                return C_ERR;
-            }
-            index += 2;
         } else if (!strcasecmp(objectGetVal(c->argv[index]), "addr") && moreargs) {
             filter->addr = objectGetVal(c->argv[index + 1]);
             index += 2;
@@ -4545,13 +4538,6 @@ static int parseClientFiltersOrReply(client *c, int index, clientFilter *filter)
         } else if (!strcasecmp(objectGetVal(c->argv[index]), "user") && moreargs) {
             filter->user = ACLGetUserByName(objectGetVal(c->argv[index + 1]), sdslen(objectGetVal(c->argv[index + 1])));
             if (filter->user == NULL) {
-                addReplyErrorFormat(c, "No such user '%s'", (char *)objectGetVal(c->argv[index + 1]));
-                return C_ERR;
-            }
-            index += 2;
-        } else if (!strcasecmp(objectGetVal(c->argv[index]), "not-user") && moreargs) {
-            filter->not_user = ACLGetUserByName(objectGetVal(c->argv[index + 1]), sdslen(objectGetVal(c->argv[index + 1])));
-            if (filter->not_user == NULL) {
                 addReplyErrorFormat(c, "No such user '%s'", (char *)objectGetVal(c->argv[index + 1]));
                 return C_ERR;
             }
