@@ -788,7 +788,7 @@ typedef struct ValkeyModuleType moduleType;
 #define LRU_CLOCK_MAX ((1 << LRU_BITS) - 1) /* Max value of obj->lru */
 #define LRU_CLOCK_RESOLUTION 1000           /* LRU clock resolution in ms */
 
-#define OBJ_REFCOUNT_BITS 30
+#define OBJ_REFCOUNT_BITS 29
 #define OBJ_SHARED_REFCOUNT ((1 << OBJ_REFCOUNT_BITS) - 1) /* Global object never destroyed. */
 #define OBJ_STATIC_REFCOUNT ((1 << OBJ_REFCOUNT_BITS) - 2) /* Object allocated in the stack. */
 #define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_STATIC_REFCOUNT
@@ -800,9 +800,12 @@ struct serverObject {
                               * and most significant 16 bits access time). */
     unsigned hasexpire : 1;
     unsigned hasembkey : 1;
+    unsigned hasembval : 1;
     unsigned refcount : OBJ_REFCOUNT_BITS;
-    void *ptr;
+    void *val_ptr; /* Not always present. Use objectGetVal(obj) and
+                    * objectSetVal(obj, val) instead. */
 };
+static_assert(sizeof(struct serverObject) <= 8 + sizeof(void *), "unexpected size - verify struct is packed correctly");
 
 /* The string name for an object's type as listed above
  * Native types are checked against the OBJ_STRING, OBJ_LIST, OBJ_* defines,
@@ -820,7 +823,8 @@ char *getObjectTypeName(robj *);
         _var.encoding = OBJ_ENCODING_RAW;    \
         _var.hasexpire = 0;                  \
         _var.hasembkey = 0;                  \
-        _var.ptr = _ptr;                     \
+        _var.hasembval = 0;                  \
+        _var.val_ptr = _ptr;                 \
     } while (0)
 
 struct evictionPoolEntry; /* Defined in evict.c */
@@ -3000,7 +3004,7 @@ void dismissObject(robj *o, size_t dump_size);
 robj *createObject(int type, void *ptr);
 void initObjectLRUOrLFU(robj *o);
 robj *createStringObject(const char *ptr, size_t len);
-robj *createStringObjectFromSds(const sds s);
+robj *createStringObjectFromSds(const_sds s);
 robj *createRawStringObject(const char *ptr, size_t len);
 robj *tryCreateRawStringObject(const char *ptr, size_t len);
 robj *tryCreateStringObject(const char *ptr, size_t len);
@@ -3044,12 +3048,14 @@ unsigned long long estimateObjectIdleTime(robj *o);
 void trimStringObjectIfNeeded(robj *o, int trim_small_values);
 #define sdsEncodedObject(objptr) (objptr->encoding == OBJ_ENCODING_RAW || objptr->encoding == OBJ_ENCODING_EMBSTR)
 
-/* Objects with key attached, AKA valkey (val+key) objects */
-robj *createObjectWithKeyAndExpire(int type, void *ptr, const sds key, long long expire);
-robj *objectSetKeyAndExpire(robj *val, sds key, long long expire);
-robj *objectSetExpire(robj *val, long long expire);
-sds objectGetKey(const robj *val);
-long long objectGetExpire(const robj *val);
+/* Objects with val and/or key embedded */
+robj *objectSetKeyAndExpire(robj *o, const_sds key, long long expire);
+robj *objectSetExpire(robj *o, long long expire);
+void objectSetVal(robj *o, void *val);
+void objectUnembedVal(robj *o, void *new_val);
+void *objectGetVal(const robj *o);
+sds objectGetKey(const robj *o);
+long long objectGetExpire(const robj *o);
 
 /* Synchronous I/O with timeout */
 ssize_t syncWrite(int fd, char *ptr, ssize_t size, long long timeout);
