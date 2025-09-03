@@ -46,6 +46,7 @@
 #include "module.h"
 #include "cluster.h"
 #include "cluster_migrateslots.h"
+#include "rdb_threads.h"
 
 #include <math.h>
 #include <fcntl.h>
@@ -146,7 +147,7 @@ int rdbRegisterAuxField(char *auxfield, rdbAuxFieldEncoder encoder, rdbAuxFieldD
     return dictAdd(rdbAuxFields, sdsnew(auxfield), (void *)codec) == DICT_OK ? C_OK : C_ERR;
 }
 
-ssize_t rdbWriteRaw(rio *rdb, void *p, size_t len) {
+ssize_t rdbWriteRaw(rio *rdb, const void *p, size_t len) {
     if (rdb && rioWrite(rdb, p, len) == 0) return -1;
     return len;
 }
@@ -399,24 +400,33 @@ writeerr:
     return -1;
 }
 
+__thread void *static_comp_buf = NULL; /**/
 ssize_t rdbSaveLzfStringObject(rio *rdb, unsigned char *s, size_t len) {
     size_t comprlen, outlen;
     void *out;
-    static void *buffer = NULL;
 
     /* We require at least four bytes compression for this to be worth it */
     if (len <= 4) return 0;
     outlen = len - 4;
     if (outlen < LZF_STATIC_BUFFER_SIZE) {
-        if (!buffer) buffer = zmalloc(LZF_STATIC_BUFFER_SIZE);
-        out = buffer;
+        if (!static_comp_buf) static_comp_buf = zmalloc(LZF_STATIC_BUFFER_SIZE);
+        out = static_comp_buf;
     } else {
         if ((out = zmalloc(outlen + 1)) == NULL) return 0;
     }
     comprlen = lzf_compress(s, len, out, outlen);
     ssize_t nwritten = comprlen ? rdbSaveLzfBlob(rdb, out, comprlen, len) : 0;
-    if (out != buffer) zfree(out);
+    if (out != static_comp_buf) zfree(out);
     return nwritten;
+}
+
+void freeThreadCompressionBuffer(void *dummy) {
+    UNUSED(dummy);
+    /* Frees the static compression buffer allocated for this thread. */
+    if (static_comp_buf) {
+        zfree(static_comp_buf);
+        static_comp_buf = NULL;
+    }
 }
 
 /* Load an LZF compressed string in RDB format. The returned value
@@ -1375,6 +1385,13 @@ ssize_t rdbSaveDb(rio *rdb, int dbid, int rdbflags, long *key_counter) {
     if ((res = rdbSaveLen(rdb, expires_size)) < 0) goto werr;
     written += res;
 
+    /* Save the DB using RDB Threads if enabled */
+    if (server.rdb_threads_num > 1) {
+        if ((res = rdbSaveDbMultiThreaded(rdb, dbid, key_counter, pname)) < 0) goto werr;
+        written += res;
+        return written;
+    }
+
     kvs_it = kvstoreIteratorInit(db->keys, HASHTABLE_ITER_SAFE | HASHTABLE_ITER_PREFETCH_VALUES | HASHTABLE_ITER_INCLUDE_IMPORTING);
     int last_slot = -1;
     /* Iterate this DB writing every entry */
@@ -1454,11 +1471,21 @@ int rdbSaveRio(int req, rio *rdb, int *error, int rdbflags, rdbSaveInfo *rsi) {
     /* save functions */
     if (!(req & REPLICA_REQ_RDB_EXCLUDE_FUNCTIONS) && rdbSaveFunctions(rdb) == -1) goto werr;
 
+    /* Start the RDB Threads that will be used for Saving */
+    if (server.rdb_threads_num > 1) {
+        initRDBThreads(RDB_SAVE_JOB_QUEUE_SIZE);
+    }
+
     /* save all databases, skip this if we're in functions-only mode */
     if (!(req & REPLICA_REQ_RDB_EXCLUDE_DATA)) {
         for (j = 0; j < server.dbnum; j++) {
             if (rdbSaveDb(rdb, j, rdbflags, &key_counter) == -1) goto werr;
         }
+    }
+
+    /* Kill the RDB threads if they were initialized */
+    if (server.rdb_threads_num > 1) {
+        killRDBThreads();
     }
 
     if (!(req & REPLICA_REQ_RDB_EXCLUDE_DATA) && rdbSaveModulesAux(rdb, VALKEYMODULE_AUX_AFTER_RDB) == -1) goto werr;
@@ -1474,6 +1501,9 @@ int rdbSaveRio(int req, rio *rdb, int *error, int rdbflags, rdbSaveInfo *rsi) {
     return C_OK;
 
 werr:
+    if (server.active_rdb_threads_num > 0) {
+        killRDBThreads();
+    }
     if (error) *error = errno;
     return C_ERR;
 }
