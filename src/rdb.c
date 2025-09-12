@@ -3074,7 +3074,6 @@ int rdbLoadRioWithLoadingCtxScopedRdb(rio *rdb, int rdbflags, rdbSaveInfo *rsi, 
     return retval;
 }
 
-
 /* Load an RDB file from the rio stream 'rdb'. On success C_OK is returned,
  * otherwise C_ERR is returned.
  * The rdb_loading_ctx argument holds objects to which the rdb will be loaded to,
@@ -3085,7 +3084,6 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
     int type, rdbver;
     uint64_t db_size = 0, expires_size = 0;
     int should_expand_db = 0;
-
     char buf[1024];
     int error;
     long long empty_keys_skipped = 0;
@@ -3101,7 +3099,7 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
         is_valkey_magic = true;
     } else {
         serverLog(LL_WARNING, "Wrong signature trying to load DB from file");
-        // Return this error so we know to terminate the sync gracefully without emptyData()
+        /* Signal to terminate gracefully without clearing existing data */
         return RDB_INCOMPATIBLE; 
     }
     rdbver = atoi(buf + 6);
@@ -3116,7 +3114,7 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
         serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: RDB compatability check passed. Flushing old data");
         emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
 
-        // Reinitialize rdbloadingcontext
+        /* functionsLibCtx is cleared when we call emptyData, reinitialize here. */
         rdb_loading_ctx->functions_lib_ctx = functionsLibCtxGetCurrent();
     }
 
@@ -3566,7 +3564,14 @@ int rdbLoad(char *filename, rdbSaveInfo *rsi, int rdbflags) {
         rdb_fd = open(filename, O_RDONLY);
         if (rdb_fd >= 0) bioCreateCloseJob(rdb_fd, 0, 1);
     }
-    return (retval == C_OK) ? RDB_OK : RDB_FAILED;
+
+    if (retval == C_OK) {
+        return RDB_OK;
+    } else if (retval == RDB_INCOMPATIBLE) {
+        return RDB_INCOMPATIBLE;
+    } else {
+        return RDB_FAILED;
+    }
 }
 
 /* A background saving child (BGSAVE) terminated its work. Handle this.
