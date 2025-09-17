@@ -2280,11 +2280,6 @@ int replicaLoadPrimaryRDBFromSocket(connection *conn, char *buf, char *eofmark, 
         /* We will soon start loading the RDB from socket, the replication history is changed,
          * we must discard the cached primary structure and force resync of sub-replicas. */
         replicationAttachToNewPrimary();
-
-        /* Even though we are on-empty-db and the database is empty, we still call emptyData. */
-        serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Flushing old data");
-        emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
-
         dbarray = server.db;
         functions_lib_ctx = functionsLibCtxGetCurrent();
     }
@@ -2301,7 +2296,10 @@ int replicaLoadPrimaryRDBFromSocket(connection *conn, char *buf, char *eofmark, 
     if (replicationSupportSkipRDBChecksum(conn, 1, *usemark)) rdb.flags |= RIO_FLAG_SKIP_RDB_CHECKSUM;
     int loadingFailed = 0;
     rdbLoadingCtx loadingCtx = {.dbarray = dbarray, .functions_lib_ctx = functions_lib_ctx};
-    if (rdbLoadRioWithLoadingCtxScopedRdb(&rdb, RDBFLAGS_REPLICATION, rsi, &loadingCtx) != C_OK) {
+    /* If we aren't using the swapdb method, then we want to empty the data before loading the rdb */
+    int empty_data_flag = server.repl_diskless_load != REPL_DISKLESS_LOAD_SWAPDB ? RDBFLAGS_EMPTY_DATA : RDBFLAGS_NONE;
+    int retval = rdbLoadRioWithLoadingCtxScopedRdb(&rdb, RDBFLAGS_REPLICATION | empty_data_flag, rsi, &loadingCtx);
+    if (retval != RDB_OK) {
         /* RDB loading failed. */
         serverLog(LL_WARNING, "Failed trying to load the PRIMARY synchronization DB "
                               "from socket, check server logs.");
@@ -2327,9 +2325,14 @@ int replicaLoadPrimaryRDBFromSocket(connection *conn, char *buf, char *eofmark, 
             disklessLoadDiscardFunctionsLibCtx(temp_functions_lib_ctx);
             serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Discarding temporary DB in background");
         } else {
-            /* Remove the half-loaded data in case we started with an empty replica. */
-            serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Discarding the half-loaded data");
-            emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
+            /* If we received RDB_INCOMPATIBLE, the old data was preserved */
+            if (retval == RDB_INCOMPATIBLE) { 
+                serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: No data was loaded, skipping discard step");
+            } else {
+                /* Remove the half-loaded data in case the load failed for other reasons. */
+                serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Discarding the half-loaded data");
+                emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
+                }
         }
 
         /* Note that there's no point in restarting the AOF on SYNC
@@ -2410,14 +2413,12 @@ int replicaLoadPrimaryRDBFromDisk(rdbSaveInfo *rsi) {
      * we must discard the cached primary structure and force resync of sub-replicas. */
     replicationAttachToNewPrimary();
 
-    /* Empty the databases only after the RDB file is ok, that is, before the RDB file
-     * is actually loaded, in case we encounter an error and drop the replication stream
-     * and leave an empty database. */
-    serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Flushing old data");
-    emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
-
+    /* We pass RDBFLAGS_EMPTY_DATA to call emptyData() after validating rdb compatbility 
+    * and before loading the data from the RDB */
     serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Loading DB in memory");
-    if (rdbLoad(server.rdb_filename, rsi, RDBFLAGS_REPLICATION) != RDB_OK) {
+    int retval = rdbLoad(server.rdb_filename, rsi, RDBFLAGS_REPLICATION | RDBFLAGS_EMPTY_DATA);
+    
+    if (retval != RDB_OK) {
         serverLog(LL_WARNING, "Failed trying to load the PRIMARY synchronization "
                               "DB from disk, check server logs.");
         if (server.rdb_del_sync_files && allPersistenceDisabled()) {
@@ -2427,9 +2428,15 @@ int replicaLoadPrimaryRDBFromDisk(rdbSaveInfo *rsi) {
             bg_unlink(server.rdb_filename);
         }
 
-        /* If disk-based RDB loading fails, remove the half-loaded dataset. */
-        serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Discarding the half-loaded data");
-        emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
+        /* If RDB failed compatability check, we did not load the new data set or flush our old data. */
+        if (retval == RDB_INCOMPATIBLE) {
+            serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Skipping flush, no new data was loaded.");
+        } else {
+            /* If disk-based RDB loading fails, remove the half-loaded dataset. */
+            serverLog(LL_NOTICE, "PRIMARY <-> REPLICA sync: Discarding the half-loaded data");
+            emptyData(-1, empty_db_flags, replicationEmptyDbCallback);
+        }
+
 
         /* Note that there's no point in restarting the AOF on sync failure,
          * it'll be restarted when sync succeeds or replica promoted. */

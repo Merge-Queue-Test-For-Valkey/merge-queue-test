@@ -349,6 +349,7 @@ extern int configOOMScoreAdjValuesDefaults[CONFIG_OOM_COUNT];
 #define RDB_OK 0
 #define RDB_NOT_EXIST 1 /* RDB file doesn't exist. */
 #define RDB_FAILED 2    /* Failed to load the RDB file. */
+#define RDB_INCOMPATIBLE 3/* RDB is incompatible with this version */
 
 /* Command doc flags */
 #define CMD_DOC_NONE 0
@@ -3082,6 +3083,7 @@ void unblockClientWaitingReplicas(client *c);
 int replicationCountAcksByOffset(long long offset);
 int replicationCountAOFAcksByOffset(long long offset);
 void replicationSendNewlineToPrimary(void);
+void replicationEmptyDbCallback(hashtable *d);
 long long replicationGetReplicaOffset(void);
 char *replicationGetReplicaName(client *c);
 long long getPsyncInitialOffset(void);
