@@ -224,6 +224,5 @@ int rdbSaveRio(int req, rio *rdb, int *error, int rdbflags, rdbSaveInfo *rsi);
 ssize_t rdbSaveFunctions(rio *rdb);
 rdbSaveInfo *rdbPopulateSaveInfo(rdbSaveInfo *rsi);
 int saveSnapshotToConnectionSockets(rdbSnapshotOptions options);
-void replicationEmptyDbCallback(hashtable *d);
 
 #endif
