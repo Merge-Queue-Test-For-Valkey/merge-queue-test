@@ -27,7 +27,7 @@ jobs:
       - name: make
         # Fail build if there are warnings
         # build with TLS just for compilation coverage
-        run: make -j4 all-with-unit-tests SERVER_CFLAGS='-Werror' BUILD_TLS=yes USE_FAST_FLOAT=yes
+        run: make -j4 all-with-unit-tests SERVER_CFLAGS='-Werror' BUILD_TLS=yes
       - name: install old server for compatibility testing
         run: |
           cd tests/tmp
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: make
         # build with TLS module just for compilation coverage
-        run: make -j4 all-with-unit-tests SANITIZER=address SERVER_CFLAGS='-Werror' BUILD_TLS=module
+        run: make -j4 all-with-unit-tests SANITIZER=address SERVER_CFLAGS='-Werror' BUILD_TLS=module USE_FAST_FLOAT=no
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx -y
       - name: test
@@ -97,7 +97,7 @@ jobs:
       - name: prepare-development-libraries
         run: sudo apt-get install librdmacm-dev libibverbs-dev
       - name: make-rdma-module
-        run: make -j4 BUILD_RDMA=module
+        run: make -j4 BUILD_RDMA=module USE_FAST_FLOAT=no
       - name: make-rdma-builtin
         run: |
           make distclean
@@ -122,7 +122,7 @@ jobs:
       - name: make
         run: |
           apt-get update && apt-get install -y build-essential
-          make -j4 SERVER_CFLAGS='-Werror'
+          make -j4 SERVER_CFLAGS='-Werror' USE_FAST_FLOAT=no
 
   build-macos-latest:
     runs-on: macos-latest
