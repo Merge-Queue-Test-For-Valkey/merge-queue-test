@@ -573,7 +573,7 @@ hashtableType zsetHashtableType = {
 };
 
 uint64_t hashtableSdsHash(const void *key) {
-    return hashtableGenHashFunction((const char *)key, sdslen((char *)key));
+    return dbHashtableGenHashFunction((const char *)key, sdslen((char *)key));
 }
 
 const void *hashtableObjectGetKey(const void *entry) {
@@ -7310,8 +7310,13 @@ __attribute__((weak)) int main(int argc, char **argv) {
         sdsfree(options);
     }
     if (server.sentinel_mode) sentinelCheckConfigFile();
+    if (server.db_hash_seed != NULL) {
+        memset(hashseed, 0, sizeof(hashseed));
+        getHashSeedFromValue(hashseed, sizeof(hashseed), server.db_hash_seed);
+        dbHashtableSetHashFunctionSeed(hashseed);
+    }
 
-        /* Do system checks */
+    /* Do system checks */
 #ifdef __linux__
     linuxMemoryWarnings();
     sds err_msg = NULL;
