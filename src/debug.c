@@ -790,7 +790,7 @@ void debugCommand(client *c) {
         addReplyStatus(c, d);
         sdsfree(d);
     } else if (!strcasecmp(c->argv[1]->ptr, "digest-value") && c->argc >= 2) {
-        /* DEBUG DIGEST-VALUE key key key ... key. */
+        /* DEBUG DIGEST-VALUE key key ... key. */
         addReplyArrayLen(c, c->argc - 2);
         for (int j = 2; j < c->argc; j++) {
             unsigned char digest[20];
@@ -971,7 +971,7 @@ void debugCommand(client *c) {
             addReplyVerbatim(c, buf, strlen(buf), "txt");
         } else {
             addReplyError(c, "The value stored at the specified key is not "
-                             "represented using an hash table");
+                             "represented using a hash table");
         }
     } else if (!strcasecmp(c->argv[1]->ptr, "change-repl-id") && c->argc == 2) {
         serverLog(LL_NOTICE, "Changing replication IDs after receiving DEBUG change-repl-id");
