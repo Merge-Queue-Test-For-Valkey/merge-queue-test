@@ -72,7 +72,6 @@ uint64_t siphash_nocase(const uint8_t *in, const size_t inlen, const uint8_t *k)
 /* --- Global variables --- */
 
 static uint8_t hash_function_seed[16];
-static uint8_t db_hash_function_seed[16];
 static hashtableResizePolicy resize_policy = HASHTABLE_RESIZE_ALLOW;
 
 /* --- Fill factor --- */
@@ -111,14 +110,6 @@ uint64_t hashtableGenHashFunction(const char *buf, size_t len) {
 
 uint64_t hashtableGenCaseHashFunction(const char *buf, size_t len) {
     return siphash_nocase((const uint8_t *)buf, len, hash_function_seed);
-}
-
-void dbHashtableSetHashFunctionSeed(uint8_t *seed) {
-    memcpy(db_hash_function_seed, seed, sizeof(db_hash_function_seed));
-}
-
-uint64_t dbHashtableGenHashFunction(const void *key, size_t len) {
-    return siphash(key, len, db_hash_function_seed);
 }
 
 /* --- Global resize policy API --- */

@@ -573,7 +573,7 @@ hashtableType zsetHashtableType = {
 };
 
 uint64_t hashtableSdsHash(const void *key) {
-    return dbHashtableGenHashFunction((const char *)key, sdslen((char *)key));
+    return hashtableGenHashFunction((const char *)key, sdslen((char *)key));
 }
 
 const void *hashtableObjectGetKey(const void *entry) {
@@ -7155,7 +7155,6 @@ __attribute__((weak)) int main(int argc, char **argv) {
     getRandomBytes(hashseed, sizeof(hashseed));
     dictSetHashFunctionSeed(hashseed);
     hashtableSetHashFunctionSeed(hashseed);
-    dbHashtableSetHashFunctionSeed(hashseed);
 
     char *exec_name = strrchr(argv[0], '/');
     if (exec_name == NULL) exec_name = argv[0];
@@ -7314,7 +7313,7 @@ __attribute__((weak)) int main(int argc, char **argv) {
     if (server.db_hash_seed != NULL) {
         memset(hashseed, 0, sizeof(hashseed));
         getHashSeedFromValue(hashseed, sizeof(hashseed), server.db_hash_seed);
-        dbHashtableSetHashFunctionSeed(hashseed);
+        hashtableSetHashFunctionSeed(hashseed);
     }
 
     /* Do system checks */

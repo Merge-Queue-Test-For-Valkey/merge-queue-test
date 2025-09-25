@@ -110,8 +110,6 @@ void hashtableSetHashFunctionSeed(const uint8_t *seed);
 uint8_t *hashtableGetHashFunctionSeed(void);
 uint64_t hashtableGenHashFunction(const char *buf, size_t len);
 uint64_t hashtableGenCaseHashFunction(const char *buf, size_t len);
-void dbHashtableSetHashFunctionSeed(uint8_t *seed);
-uint64_t dbHashtableGenHashFunction(const void *key, size_t len);
 
 /* Global resize policy */
 void hashtableSetResizePolicy(hashtableResizePolicy policy);
