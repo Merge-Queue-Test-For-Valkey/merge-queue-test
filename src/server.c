@@ -7155,6 +7155,7 @@ __attribute__((weak)) int main(int argc, char **argv) {
     getRandomBytes(hashseed, sizeof(hashseed));
     dictSetHashFunctionSeed(hashseed);
     hashtableSetHashFunctionSeed(hashseed);
+    dbHashtableSetHashFunctionSeed(hashseed);
 
     char *exec_name = strrchr(argv[0], '/');
     if (exec_name == NULL) exec_name = argv[0];
