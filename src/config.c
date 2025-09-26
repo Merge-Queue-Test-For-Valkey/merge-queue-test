@@ -3187,7 +3187,7 @@ static int applyClientMaxMemoryUsage(const char **err) {
     return 1;
 }
 
-#define DB_HASH_SEED_MAX_LEN 256
+#define DB_HASH_SEED_MAX_LEN 16
 static int isValidDbHashSeed(char *val, const char **err) {
     if (val[0] == '\0') {
         *err = "db-hash-seed can't be empty";
