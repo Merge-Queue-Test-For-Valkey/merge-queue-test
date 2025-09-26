@@ -45,20 +45,25 @@ set csv_dump {"0","compressible","string","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 "0","zset_zipped","zset","a","1","b","2","c","3",
 }
 
-start_server [list overrides [list "dir" $server_path "dbfilename" "encodings.rdb"]] {
-  test "RDB encoding loading test" {
-    r select 0
-    csvdump r
-  } $csv_dump
+set rdb_thread_counts {1 2 4}
+foreach thread_count $rdb_thread_counts {
+    start_server [list overrides [list "dir" $server_path "dbfilename" "encodings.rdb" "rdb-threads" $thread_count]] {
+    test "RDB encoding loading test" {
+        r select 0
+        csvdump r
+    } $csv_dump
+    }
 }
 
-start_server_and_kill_it [list "dir" $server_path "dbfilename" "encodings-rdb987.rdb"] {
-    test "RDB future version loading, strict version check" {
-        wait_for_condition 50 100 {
-            [string match {*Fatal error loading*} \
-                 [exec tail -1 < [dict get $srv stdout]]]
-        } else {
-            fail "Server started even though RDB version is unsupported"
+foreach thread_count $rdb_thread_counts {
+    start_server_and_kill_it [list "dir" $server_path "dbfilename" "encodings-rdb987.rdb" "rdb-threads" $thread_count] {
+        test "RDB future version loading, strict version check" {
+            wait_for_condition 50 100 {
+                [string match {*Fatal error loading*} \
+                    [exec tail -1 < [dict get $srv stdout]]]
+            } else {
+              fail "Server started even though RDB version is unsupported"
+            }
         }
     }
 }
@@ -231,162 +236,167 @@ start_server_and_kill_it [list "dir" $server_path] {
     }
 }
 
-start_server {} {
-    test {Test FLUSHALL aborts bgsave} {
-        r config set save ""
-        # 5000 keys with 1ms sleep per key should take 5 second
-        r config set rdb-key-save-delay 1000
-        populate 5000
-        assert_lessthan 999 [s rdb_changes_since_last_save]
-        r bgsave
-        assert_equal [s rdb_bgsave_in_progress] 1
-        r flushall
-        # wait a second max (bgsave should take 5)
-        wait_for_condition 10 100 {
-            [s rdb_bgsave_in_progress] == 0
-        } else {
-            fail "bgsave not aborted"
-        }
-        # verify that bgsave failed, by checking that the change counter is still high
-        assert_lessthan 999 [s rdb_changes_since_last_save]
-        # make sure the server is still writable
-        r set x xx
-    }
-
-    test {bgsave resets the change counter} {
-        r config set rdb-key-save-delay 0
-        r bgsave
-        wait_for_condition 50 100 {
-            [s rdb_bgsave_in_progress] == 0
-        } else {
-            fail "bgsave not done"
-        }
-        assert_equal [s rdb_changes_since_last_save] 0
-    }
-
-    test {bgsave cancel aborts save} {
-        r config set save ""
-        # Generating RDB will take some 100 seconds
-        r config set rdb-key-save-delay 1000000
-        populate 100 "" 16
-
-        r bgsave
-        wait_for_condition 50 100 {
-            [s rdb_bgsave_in_progress] == 1
-        } else {
-            fail "bgsave did not start in time"
-        }
-        set fork_child_pid [get_child_pid 0]
-        
-        assert {[r bgsave cancel] eq {Background saving cancelled}}
-        set temp_rdb [file join [lindex [r config get dir] 1] temp-${fork_child_pid}.rdb]
-        # Temp rdb must be deleted
-        wait_for_condition 50 100 {
-            ![file exists $temp_rdb]
-        } else {
-            fail "bgsave temp file was not deleted after cancel"
+foreach thread_count $rdb_thread_counts {
+    start_server [list overrides [list rdb-threads $thread_count]] {
+        test {Test FLUSHALL aborts bgsave} {
+            r config set save ""
+            # 5000 keys with 1ms sleep per key should take 5 second
+            r config set rdb-key-save-delay 1000
+            populate 5000
+            assert_lessthan 999 [s rdb_changes_since_last_save]
+            r bgsave
+            assert_equal [s rdb_bgsave_in_progress] 1
+            r flushall
+            # wait a second max (bgsave should take 5)
+            wait_for_condition 10 100 {
+                [s rdb_bgsave_in_progress] == 0
+            } else {
+                fail "bgsave not aborted"
+            }
+            # verify that bgsave failed, by checking that the change counter is still high
+            assert_lessthan 999 [s rdb_changes_since_last_save]
+            # make sure the server is still writable
+            r set x xx
         }
 
-         # Make sure no save is running and that bgsave return an error
-         wait_for_condition 50 100 {
-            [s rdb_bgsave_in_progress] == 0
-        } else {
-            fail "bgsave is currently running"
-        }
-        assert_error "ERR Background saving is currently not in progress or scheduled" {r bgsave cancel}
-    }
-
-    test {bgsave cancel schedulled request} {
-        r config set save ""
-        # Generating RDB will take some 100 seconds
-        r config set rdb-key-save-delay 1000000
-        populate 100 "" 16
-
-        # start a long AOF child
-        r bgrewriteaof
-        wait_for_condition 50 100 {
-            [s aof_rewrite_in_progress] == 1
-        } else {
-            fail "aof not started"
-        }
-        
-        # Make sure cancel return valid status
-        assert {[r bgsave schedule] eq {Background saving scheduled}}
-
-        # Cancel the scheduled save
-        assert {[r bgsave cancel] eq {Scheduled background saving cancelled}}
-
-        # Make sure a second call to bgsave cancel return an error
-        assert_error "ERR Background saving is currently not in progress or scheduled" {r bgsave cancel}
-    }
-
-
-}
-
-test {client freed during loading} {
-    start_server [list overrides [list key-load-delay 50 loading-process-events-interval-bytes 1024 rdbcompression no save "900 1"]] {
-        # create a big rdb that will take long to load. it is important
-        # for keys to be big since the server processes events only once in 2mb.
-        # 100mb of rdb, 100k keys will load in more than 5 seconds
-        r debug populate 100000 key 1000
-
-        restart_server 0 false false
-
-        # make sure it's still loading
-        assert_equal [s loading] 1
-
-        # connect and disconnect 5 clients
-        set clients {}
-        for {set j 0} {$j < 5} {incr j} {
-            lappend clients [valkey_deferring_client]
-        }
-        foreach rd $clients {
-            $rd debug log bla
-        }
-        foreach rd $clients {
-            $rd read
-        }
-        foreach rd $clients {
-            $rd close
+        test {bgsave resets the change counter} {
+            r config set rdb-key-save-delay 0
+            r bgsave
+            wait_for_condition 50 100 {
+                [s rdb_bgsave_in_progress] == 0
+            } else {
+                fail "bgsave not done"
+            }
+            assert_equal [s rdb_changes_since_last_save] 0
         }
 
-        # make sure the server freed the clients
-        wait_for_condition 100 100 {
-            [s connected_clients] < 3
-        } else {
-            fail "clients didn't disconnect"
+        test {bgsave cancel aborts save} {
+            r config set save ""
+            # Generating RDB will take some 100 seconds
+            r config set rdb-key-save-delay 1000000
+            populate 100 "" 16
+
+            r bgsave
+            wait_for_condition 50 100 {
+                [s rdb_bgsave_in_progress] == 1
+            } else {
+                fail "bgsave did not start in time"
+            }
+            set fork_child_pid [get_child_pid 0]
+            
+            assert {[r bgsave cancel] eq {Background saving cancelled}}
+            set temp_rdb [file join [lindex [r config get dir] 1] temp-${fork_child_pid}.rdb]
+            # Temp rdb must be deleted
+            wait_for_condition 50 100 {
+                ![file exists $temp_rdb]
+            } else {
+                fail "bgsave temp file was not deleted after cancel"
+            }
+
+            # Make sure no save is running and that bgsave return an error
+            wait_for_condition 50 100 {
+                [s rdb_bgsave_in_progress] == 0
+            } else {
+                fail "bgsave is currently running"
+            }
+            assert_error "ERR Background saving is currently not in progress or scheduled" {r bgsave cancel}
         }
 
-        # make sure it's still loading
-        assert_equal [s loading] 1
+        test {bgsave cancel schedulled request} {
+            r config set save ""
+            # Generating RDB will take some 100 seconds
+            r config set rdb-key-save-delay 1000000
+            populate 100 "" 16
 
-        # no need to keep waiting for loading to complete
-        exec kill [srv 0 pid]
+            # start a long AOF child
+            r bgrewriteaof
+            wait_for_condition 50 100 {
+                [s aof_rewrite_in_progress] == 1
+            } else {
+                fail "aof not started"
+            }
+            
+            # Make sure cancel return valid status
+            assert {[r bgsave schedule] eq {Background saving scheduled}}
+
+            # Cancel the scheduled save
+            assert {[r bgsave cancel] eq {Scheduled background saving cancelled}}
+
+            # Make sure a second call to bgsave cancel return an error
+            assert_error "ERR Background saving is currently not in progress or scheduled" {r bgsave cancel}
+        }
     }
 }
 
-start_server {} {
-    test {Test RDB load info} {
-        r debug populate 1000
-        r save
-        assert {[r lastsave] <= [lindex [r time] 0]}
-        restart_server 0 true false
-        wait_done_loading r
-        assert {[s rdb_last_load_keys_expired] == 0}
-        assert {[s rdb_last_load_keys_loaded] == 1000}
+foreach thread_count $rdb_thread_counts {
+    test {client freed during loading} {
+        start_server [list overrides [list key-load-delay 50 loading-process-events-interval-bytes 1024 rdbcompression no save "900 1" rdb-threads $thread_count]] {
+            # create a big rdb that will take long to load. it is important
+            # for keys to be big since the server processes events only once in 2mb.
+            # 100mb of rdb, 100k keys will load in more than 5 seconds
+            r debug populate 100000 key 1000
 
-        r debug set-active-expire 0
-        for {set j 0} {$j < 1024} {incr j} {
-            r select [expr $j%16]
-            r set $j somevalue px 10
+            restart_server 0 false false
+
+            # make sure it's still loading
+            assert_equal [s loading] 1
+
+            # connect and disconnect 5 clients
+            set clients {}
+            for {set j 0} {$j < 5} {incr j} {
+                lappend clients [valkey_deferring_client]
+            }
+            foreach rd $clients {
+                $rd debug log bla
+            }
+            foreach rd $clients {
+                $rd read
+            }
+            foreach rd $clients {
+                $rd close
+            }
+
+            # make sure the server freed the clients
+            wait_for_condition 100 100 {
+                [s connected_clients] < 3
+            } else {
+                fail "clients didn't disconnect"
+            }
+
+            # make sure it's still loading
+            assert_equal [s loading] 1
+
+            # no need to keep waiting for loading to complete
+            exec kill [srv 0 pid]
         }
-        after 20
+    }
+}
 
-        r save
-        restart_server 0 true false
-        wait_done_loading r
-        assert {[s rdb_last_load_keys_expired] == 1024}
-        assert {[s rdb_last_load_keys_loaded] == 1000}
+foreach thread_count $rdb_thread_counts {
+    start_server {} {
+        r config set rdb-threads $thread_count
+        test "Test RDB load info for $thread_count threads" {
+            r debug populate 1000
+            r save
+            assert {[r lastsave] <= [lindex [r time] 0]}
+            restart_server 0 true false
+            wait_done_loading r
+            assert {[s rdb_last_load_keys_expired] == 0}
+            assert {[s rdb_last_load_keys_loaded] == 1000}
+
+            r debug set-active-expire 0
+            for {set j 0} {$j < 1024} {incr j} {
+                r select [expr $j%16]
+                r set $j somevalue px 10
+            }
+            after 20
+
+            r save
+            restart_server 0 true false
+            wait_done_loading r
+            assert {[s rdb_last_load_keys_expired] == 1024}
+            assert {[s rdb_last_load_keys_loaded] == 1000}
+        }
     }
 }
 
@@ -565,6 +575,37 @@ start_server {} {
         # server is writable again
         r set x y
     } {OK}
+}
+
+foreach thread_count $rdb_thread_counts {
+    start_server [list overrides [list "dir" $server_path "dbfilename" "dump_$thread_count.rdb" "save" "" "rdb-threads" $thread_count]] {
+        test "RDB round-trip keeps DB identical (rdb-threads=$thread_count)" {
+            populate 20000 "k:small:" 16  0 false 0
+            populate 5000 "k:large:" 1024 0 false 0
+
+            set expected_keys 25000
+
+            set before_dbsize [r dbsize]
+            assert_equal $before_dbsize $expected_keys
+
+            set before_digest [r debug digest]
+
+            # Run Save and verify file exists
+            r save
+            set dump_path [file join [lindex [r config get dir] 1] [lindex [r config get dbfilename] 1]]
+            assert {[file exists $dump_path]}
+
+            restart_server 0 true false
+            wait_done_loading r
+
+            # Verify same number of keys and same digest.
+            set after_dbsize [s rdb_last_load_keys_loaded]
+            assert_equal $after_dbsize $expected_keys
+
+            set after_digest [r debug digest]
+            assert_equal $before_digest $after_digest
+        }
+    }
 }
 
 } ;# tags
