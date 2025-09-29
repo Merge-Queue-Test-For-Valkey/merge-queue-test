@@ -3193,8 +3193,8 @@ static int isValidDbHashSeed(char *val, const char **err) {
         *err = "db-hash-seed can't be empty";
         return 0;
     }
-    if (strlen(val) > DB_HASH_SEED_MAX_LEN) {
-        *err = "db-hash-seed must be less than or equal to " STRINGIFY(DB_HASH_SEED_MAX_LEN) " characters";
+    if (strlen(val) != DB_HASH_SEED_MAX_LEN) {
+        *err = "db-hash-seed must be equal to " STRINGIFY(DB_HASH_SEED_MAX_LEN) " characters";
         return 0;
     }
     return 1;
@@ -3278,7 +3278,6 @@ standardConfig static_configs[] = {
     createStringConfig("bgsave-cpulist", "bgsave_cpulist", IMMUTABLE_CONFIG, EMPTY_STRING_IS_NULL, server.bgsave_cpulist, NULL, NULL, NULL),
     createStringConfig("ignore-warnings", NULL, MODIFIABLE_CONFIG, ALLOW_EMPTY_STRING, server.ignore_warnings, "", NULL, NULL),
     createStringConfig("proc-title-template", NULL, MODIFIABLE_CONFIG, ALLOW_EMPTY_STRING, server.proc_title_template, CONFIG_DEFAULT_PROC_TITLE_TEMPLATE, isValidProcTitleTemplate, updateProcTitleTemplate),
-    createStringConfig("db-hash-seed", NULL, IMMUTABLE_CONFIG, EMPTY_STRING_IS_NULL, server.db_hash_seed, NULL, isValidDbHashSeed, NULL),
     createStringConfig("bind-source-addr", NULL, MODIFIABLE_CONFIG, EMPTY_STRING_IS_NULL, server.bind_source_addr, NULL, NULL, NULL),
     createStringConfig("logfile", NULL, IMMUTABLE_CONFIG, ALLOW_EMPTY_STRING, server.logfile, "", NULL, NULL),
 #ifdef LOG_REQ_RES
@@ -3291,6 +3290,7 @@ standardConfig static_configs[] = {
     createSDSConfig("primaryauth", "masterauth", MODIFIABLE_CONFIG | SENSITIVE_CONFIG, EMPTY_STRING_IS_NULL, server.primary_auth, NULL, NULL, NULL),
     createSDSConfig("requirepass", NULL, MODIFIABLE_CONFIG | SENSITIVE_CONFIG, EMPTY_STRING_IS_NULL, server.requirepass, NULL, NULL, updateRequirePass),
     createSDSConfig("availability-zone", NULL, MODIFIABLE_CONFIG, ALLOW_EMPTY_STRING, server.availability_zone, "", NULL, NULL),
+    createSDSConfig("db-hash-seed", NULL, IMMUTABLE_CONFIG, EMPTY_STRING_IS_NULL, server.db_hash_seed, NULL, isValidDbHashSeed, NULL),
 
     /* Enum Configs */
     createEnumConfig("supervised", NULL, IMMUTABLE_CONFIG, supervised_mode_enum, server.supervised_mode, SUPERVISED_NONE, NULL, NULL),

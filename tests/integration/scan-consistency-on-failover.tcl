@@ -1,6 +1,6 @@
 start_server {tags {"scan-consistency-on-failover external:skip"}} {
 
-    set fixed_seed "aabbccddeeff"
+    set fixed_seed "aabbccddeeffgghh"
     set shared_overrides [list appendonly no save "" db-hash-seed $fixed_seed activedefrag no hz 1]
 
     start_server [list overrides $shared_overrides] {
@@ -18,6 +18,9 @@ start_server {tags {"scan-consistency-on-failover external:skip"}} {
             set n 50
             for {set i 0} {$i < $n} {incr i} {
                 $primary set "k:$i" x
+                $primary hset h "f:$i" $i
+                $primary sadd s "m:$i"
+                $primary zadd z $i "m:$i"
             }
 
             wait_for_condition 200 50 {
@@ -32,6 +35,16 @@ start_server {tags {"scan-consistency-on-failover external:skip"}} {
                 assert_equal $cursor_next [$replica scan [lindex $cursor 0]]
                 if {[lindex $cursor_next 0] eq "0"} break
                 set cursor $cursor_next
+            }
+
+            foreach {cmd key} {hscan h sscan s zscan z} {
+                set cursor {{0} {}}
+                while {1} {
+                    set cursor_next [$primary $cmd $key [lindex $cursor 0]]
+                    assert_equal $cursor_next [$replica $cmd $key [lindex $cursor 0]]
+                    if {[lindex $cursor_next 0] eq "0"} break
+                    set cursor $cursor_next
+                }
             }
         }
     }
