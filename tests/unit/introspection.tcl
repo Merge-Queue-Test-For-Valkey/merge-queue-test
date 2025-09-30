@@ -1959,7 +1959,7 @@ test {CONFIG REWRITE handles alias config properly} {
 } {} {external:skip}
 
 test {CONFIG db-hash-seed is immutable and settable at startup} {
-    start_server {tags {"introspection"} overrides {db-hash-seed myseed}} {
+    start_server {tags {"introspection"} overrides {db-hash-seed aabbccddeeffgghh}} {
         assert_error "ERR CONFIG SET failed (possibly related to argument 'db-hash-seed') - can't set immutable config*" {
             r config set db-hash-seed newseed
         }
