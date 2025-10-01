@@ -3188,12 +3188,8 @@ static int applyClientMaxMemoryUsage(const char **err) {
 }
 
 #define DB_HASH_SEED_MAX_LEN 16
-static int isValidDbHashSeed(char *val, const char **err) {
-    if (val[0] == '\0') {
-        *err = "db-hash-seed can't be empty";
-        return 0;
-    }
-    if (strlen(val) != DB_HASH_SEED_MAX_LEN) {
+static int isValidDbHashSeed(sds val, const char **err) {
+    if (sdslen(val) != DB_HASH_SEED_MAX_LEN) {
         *err = "db-hash-seed must be equal to " STRINGIFY(DB_HASH_SEED_MAX_LEN) " characters";
         return 0;
     }

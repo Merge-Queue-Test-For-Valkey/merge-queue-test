@@ -1977,7 +1977,7 @@ test {CONFIG db-hash-seed enforces a length of 16 characters} {
     set err_msg ""
     set rc [catch {exec src/valkey-server --port 0 --db-hash-seed $empty_seed} err_msg]
     assert {$rc}
-    assert_match {*db-hash-seed can't be empty*} $err_msg
+    assert_match {*db-hash-seed must be equal to 16 characters*} $err_msg
 
     set too_long_seed "1234567890abcdefg"
     set err_msg ""
