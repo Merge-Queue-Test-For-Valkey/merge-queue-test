@@ -1,4 +1,4 @@
-start_server {tags {"scan-consistency-on-failover external:skip"}} {
+start_server {tags {"scan-consistency-in-cluster-mode external:skip"}} {
 
     set fixed_seed "aabbccddeeffgghh"
     set shared_overrides [list appendonly no save "" db-hash-seed $fixed_seed activedefrag no hz 1]
