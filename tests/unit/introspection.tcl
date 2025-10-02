@@ -1965,30 +1965,3 @@ test {CONFIG db-hash-seed is immutable and settable at startup} {
         }
     }
 } {} {external:skip}
-
-test {CONFIG db-hash-seed enforces a length of 16 characters} {
-    set valid_seed "aabbccddeeffgghh"
-    set valid_seed_overrides [list db-hash-seed $valid_seed]
-    start_server [list tags {"introspection"} overrides $valid_seed_overrides] {
-        assert_equal [list db-hash-seed $valid_seed] [r config get db-hash-seed]
-    }
-
-    set empty_seed ""
-    set err_msg ""
-    set rc [catch {exec src/valkey-server --port 0 --db-hash-seed $empty_seed} err_msg]
-    assert {$rc}
-    assert_match {*db-hash-seed must be equal to 16 characters*} $err_msg
-
-    set too_long_seed "1234567890abcdefg"
-    set err_msg ""
-    set rc [catch {exec src/valkey-server --port 0 --db-hash-seed $too_long_seed} err_msg]
-    assert {$rc}
-    assert_match {*db-hash-seed must be equal to 16 characters*} $err_msg
-
-    set too_short_seed "1234567890"
-    set err_msg ""
-    set rc [catch {exec src/valkey-server --port 0 --db-hash-seed $too_short_seed} err_msg]
-    assert {$rc}
-    assert_match {*db-hash-seed must be equal to 16 characters*} $err_msg
-
-} {} {external:skip}
