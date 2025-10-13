@@ -1,7 +1,7 @@
-start_server {tags {"scan-family-consistency external:skip"}} {
+start_server {tags {"external:skip"}} {
 
     set fixed_seed "aabbccddeeffgghh"
-    set shared_overrides [list appendonly no save "" db-hash-seed $fixed_seed activedefrag no hz 1]
+    set shared_overrides [list appendonly no save "" hash-seed $fixed_seed activedefrag no hz 1]
 
     start_server [list overrides $shared_overrides] {
         set primary_host [srv 0 host]

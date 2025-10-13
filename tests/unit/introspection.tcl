@@ -1225,7 +1225,7 @@ start_server {tags {"introspection"}} {
             disable-thp
             aclfile
             unixsocket
-            db-hash-seed
+            hash-seed
             pidfile
             syslog-ident
             appendfilename
@@ -1958,10 +1958,10 @@ test {CONFIG REWRITE handles alias config properly} {
     }
 } {} {external:skip}
 
-test {CONFIG db-hash-seed is immutable and settable at startup} {
-    start_server {tags {"introspection"} overrides {db-hash-seed aabbccddeeffgghh}} {
-        assert_error "ERR CONFIG SET failed (possibly related to argument 'db-hash-seed') - can't set immutable config*" {
-            r config set db-hash-seed newseed
+test {CONFIG hash-seed is immutable and settable at startup} {
+    start_server {tags {"introspection"} overrides {hash-seed aabbccddeeffgghh}} {
+        assert_error "ERR CONFIG SET failed (possibly related to argument 'hash-seed') - can't set immutable config*" {
+            r config set hash-seed newseed
         }
     }
 } {} {external:skip}

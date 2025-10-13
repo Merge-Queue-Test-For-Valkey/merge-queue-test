@@ -7310,9 +7310,9 @@ __attribute__((weak)) int main(int argc, char **argv) {
         sdsfree(options);
     }
     if (server.sentinel_mode) sentinelCheckConfigFile();
-    if (server.db_hash_seed != NULL) {
+    if (server.hash_seed != NULL) {
         memset(hashseed, 0, sizeof(hashseed));
-        getHashSeedFromValue(hashseed, sizeof(hashseed), server.db_hash_seed);
+        getHashSeedFromValue(hashseed, sizeof(hashseed), server.hash_seed);
         hashtableSetHashFunctionSeed(hashseed);
     }
 
