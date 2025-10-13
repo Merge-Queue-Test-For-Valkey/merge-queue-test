@@ -1037,6 +1037,10 @@ err:
     return 0;
 }
 
+/* Populate the provided seed array by deterministically folding the input value.
+ * The function repeats the value across the seed array and XORs each byte with
+ * the current seed content.
+ */
 void getHashSeedFromValue(unsigned char *seed_array, size_t len, const char *value) {
     size_t input_len = strlen(value);
     memset(seed_array, 0, len);

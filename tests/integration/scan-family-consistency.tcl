@@ -31,19 +31,27 @@ start_server {tags {"scan-family-consistency external:skip"}} {
 
             set cursor {{0} {}}
             while {1} {
-                set cursor_next [$primary scan [lindex $cursor 0]]
-                assert_equal $cursor_next [$replica scan [lindex $cursor 0]]
-                if {[lindex $cursor_next 0] eq "0"} break
-                set cursor $cursor_next
+                set primary_cursor_next [$primary scan [lindex $cursor 0]]
+                set replica_cursor_next [$replica scan [lindex $cursor 0]]
+                assert_equal $primary_cursor_next $replica_cursor_next
+                if {[lindex $primary_cursor_next 0] eq "0"} {
+                    assert_equal "0" [lindex $replica_cursor_next 0]
+                    break
+                }
+                set cursor $primary_cursor_next
             }
 
             foreach {cmd key} {hscan h sscan s zscan z} {
                 set cursor {{0} {}}
                 while {1} {
-                    set cursor_next [$primary $cmd $key [lindex $cursor 0]]
-                    assert_equal $cursor_next [$replica $cmd $key [lindex $cursor 0]]
-                    if {[lindex $cursor_next 0] eq "0"} break
-                    set cursor $cursor_next
+                    set primary_cursor_next [$primary $cmd $key [lindex $cursor 0]]
+                    set replica_cursor_next [$replica $cmd $key [lindex $cursor 0]]
+                    assert_equal $primary_cursor_next $replica_cursor_next
+                    if {[lindex $primary_cursor_next 0] eq "0"} {
+                        assert_equal "0" [lindex $replica_cursor_next 0]
+                        break
+                    }
+                    set cursor $primary_cursor_next
                 }
             }
         }
