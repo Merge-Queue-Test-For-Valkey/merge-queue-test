@@ -3124,6 +3124,8 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
     while (1) {
         sds key;
         robj *val;
+        uint64_t cached_key_hash;
+        int cached_dict_index;
 
         /* Read type. */
         if ((type = rdbLoadType(rdb)) == -1) goto eoferr;
@@ -3394,6 +3396,9 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
 
         /* Read key */
         if ((key = rdbGenericLoadStringObject(rdb, RDB_LOAD_SDS, NULL)) == NULL) goto eoferr;
+        /* Prefetch the corresponding hashtable bucket to reduce cache misses
+         * and hash/dict_index will be cached to reduce redundant computations. */
+        dbPrefetch(db, key, &cached_key_hash, &cached_dict_index);
         /* Read value */
         val = rdbLoadObject(type, rdb, key, db->id, &error);
 
@@ -3442,7 +3447,7 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
             initStaticStringObject(keyobj, key);
 
             /* Add the new object in the hash table */
-            int added = dbAddRDBLoad(db, key, &val);
+            int added = dbAddRDBLoad(db, key, &val, cached_key_hash, cached_dict_index);
             server.rdb_last_load_keys_loaded++;
             if (!added) {
                 if (rdbflags & RDBFLAGS_ALLOW_DUP) {
@@ -3450,7 +3455,7 @@ int rdbLoadRioWithLoadingCtx(rio *rdb, int rdbflags, rdbSaveInfo *rsi, rdbLoadin
                      * When it's set we allow new keys to replace the current
                      * keys with the same name. */
                     dbSyncDelete(db, &keyobj);
-                    added = dbAddRDBLoad(db, key, &val);
+                    added = dbAddRDBLoad(db, key, &val, cached_key_hash, cached_dict_index);
                     serverAssert(added);
                 } else {
                     serverLog(LL_WARNING, "RDB has duplicated key '%s' in DB %d", key, db->id);

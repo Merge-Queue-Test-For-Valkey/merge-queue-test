@@ -382,7 +382,7 @@ int hashTypeSet(robj *o, sds field, sds value, long long expiry, int flags) {
         hashTypeIgnoreTTL(o, true);
         hashtablePosition position;
         void *existing;
-        if (hashtableFindPositionForInsert(ht, field, &position, &existing)) {
+        if (hashtableFindPositionForInsert(ht, field, NULL, &position, &existing)) {
             /* does not exist yet */
             entry *entry = entryCreate(field, v, expiry);
             hashtableInsertAtPosition(ht, entry, &position);

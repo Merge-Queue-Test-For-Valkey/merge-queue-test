@@ -886,9 +886,14 @@ bool kvstoreHashtableAdd(kvstore *kvs, int didx, void *entry) {
     return ret;
 }
 
-bool kvstoreHashtableFindPositionForInsert(kvstore *kvs, int didx, void *key, hashtablePosition *position, void **existing) {
+bool kvstoreHashtableFindPositionForInsert(kvstore *kvs, int didx, void *key, const uint64_t *cached_hash, hashtablePosition *position, void **existing) {
     hashtable *ht = createHashtableIfNeeded(kvs, didx);
-    return hashtableFindPositionForInsert(ht, key, position, existing);
+    return hashtableFindPositionForInsert(ht, key, cached_hash, position, existing);
+}
+
+void kvstoreHashtablePrefetch(kvstore *kvs, int didx, const void *key, uint64_t *cached_hash) {
+    hashtable *ht = createHashtableIfNeeded(kvs, didx);
+    hashtablePrefetchBucket(ht, key, cached_hash);
 }
 
 /* Must be used together with kvstoreHashtableFindPositionForInsert, with returned
