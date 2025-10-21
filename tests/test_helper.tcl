@@ -51,7 +51,6 @@ set ::portcount 8000; # we don't wanna use more than 10000 to avoid collision wi
 set ::traceleaks 0
 set ::valgrind 0
 set ::durable 0
-set ::require_ipv6 0
 set ::tls 0
 set ::io_threads 0
 set ::tls_module 0
@@ -688,7 +687,6 @@ proc print_help_screen {} {
         "--io-threads       Run tests with IO threads."
         "--tls              Run tests in TLS mode."
         "--tls-module       Run tests in TLS mode with Valkey module."
-        "--require-ipv6     Run tests forcing the ipv6."
         "--host <addr>      Run tests against an external host."
         "--port <port>      TCP port to use against external host."
         "--other-server-path <path>"
@@ -859,8 +857,6 @@ for {set j 0} {$j < [llength $argv]} {incr j} {
     } elseif {$opt eq {--help}} {
         print_help_screen
         exit 0
-    } elseif {$opt eq {--require-ipv6}} {
-        set ::require_ipv6 1
     } else {
         puts "Wrong argument: $opt"
         exit 1
@@ -1000,10 +996,10 @@ proc is_ipv6_available {} {
         set client [socket ::1 $port]
         close $server
         close $client
+    }] == 0} {
         return 1
-    }]} {
-        return 0
     }
+    return 0
 }
 
 # With the parallel test running multiple server instances at the same time
