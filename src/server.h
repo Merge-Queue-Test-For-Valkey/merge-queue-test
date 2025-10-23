@@ -1588,6 +1588,7 @@ typedef struct serverTLSContextConfig {
     int session_caching;
     int session_cache_size;
     int session_cache_timeout;
+    int cert_reload_interval_mins;
 } serverTLSContextConfig;
 
 /*-----------------------------------------------------------------------------
