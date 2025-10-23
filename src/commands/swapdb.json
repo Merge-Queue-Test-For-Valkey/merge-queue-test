@@ -8,12 +8,14 @@
         "function": "swapdbCommand",
         "command_flags": [
             "WRITE",
-            "FAST"
+            "FAST",
+            "CROSS_DB"
         ],
         "acl_categories": [
             "KEYSPACE",
             "DANGEROUS"
         ],
+        "get_dbid_args": "swapdbDbIdArgs",
         "arguments": [
             {
                 "name": "index1",

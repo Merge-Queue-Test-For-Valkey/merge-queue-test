@@ -8,11 +8,13 @@
         "function": "moveCommand",
         "command_flags": [
             "WRITE",
-            "FAST"
+            "FAST",
+            "CROSS_DB"
         ],
         "acl_categories": [
             "KEYSPACE"
         ],
+        "get_dbid_args": "moveDbIdArgs",
         "key_specs": [
             {
                 "flags": [

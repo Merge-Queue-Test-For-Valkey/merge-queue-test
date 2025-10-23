@@ -909,6 +909,10 @@ void selectCommand(client *c) {
 
     if (getIntFromObjectOrReply(c, c->argv[1], &id, NULL) != C_OK) return;
 
+    if (c->flag.multi) {
+        c->mstate->transaction_db_id = id;
+    }
+
     if (selectDb(c, id) == C_ERR) {
         addReplyError(c, "DB index is out of range");
     } else {
@@ -2960,4 +2964,46 @@ int bitfieldGetKeys(struct serverCommand *cmd, robj **argv, int argc, getKeysRes
         keys[0].flags = CMD_KEY_RW | CMD_KEY_ACCESS | CMD_KEY_UPDATE;
     }
     return 1;
+}
+
+
+int *selectDbIdArgs(robj **argv, int argc, int *count) {
+    if (argc < 2) return NULL;
+
+    long long dbid;
+    if (getLongLongFromObject(argv[1], &dbid) != C_OK) return NULL;
+    if (dbid < 0 || dbid >= server.dbnum) return NULL;
+
+    int *result = zmalloc(sizeof(int));
+    result[0] = (int)dbid;
+    *count = 1;
+    return result;
+}
+
+int *swapdbDbIdArgs(robj **argv, int argc, int *count) {
+    if (argc < 3) return NULL;
+
+    long long db1, db2;
+    if (getLongLongFromObject(argv[1], &db1) != C_OK ||
+        getLongLongFromObject(argv[2], &db2) != C_OK) return NULL;
+    if (db1 < 0 || db1 >= server.dbnum || db2 < 0 || db2 >= server.dbnum) return NULL;
+
+    int *result = zmalloc(2 * sizeof(int));
+    result[0] = (int)db1;
+    result[1] = (int)db2;
+    *count = 2;
+    return result;
+}
+
+int *moveDbIdArgs(robj **argv, int argc, int *count) {
+    if (argc < 3) return NULL;
+
+    long long dbid;
+    if (getLongLongFromObject(argv[2], &dbid) != C_OK) return NULL;
+    if (dbid < 0 || dbid >= server.dbnum) return NULL;
+
+    int *result = zmalloc(sizeof(int));
+    result[0] = (int)dbid;
+    *count = 1;
+    return result;
 }

@@ -9,11 +9,13 @@
         "command_flags": [
             "LOADING",
             "STALE",
-            "FAST"
+            "FAST",
+            "CROSS_DB"
         ],
         "acl_categories": [
             "CONNECTION"
         ],
+        "get_dbid_args": "selectDbIdArgs",
         "reply_schema": {
             "const": "OK"
         },
