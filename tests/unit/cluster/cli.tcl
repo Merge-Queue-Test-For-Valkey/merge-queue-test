@@ -284,6 +284,16 @@ test {Migrate the last slot away from a node using valkey-cli} {
             fail "Cluster doesn't stabilize"
         }
 
+        # Ensure all node IDs are propagated
+        wait_for_condition 1000 50 {
+            [CI 0 cluster_known_nodes] == 4 &&
+            [CI 1 cluster_known_nodes] == 4 &&
+            [CI 2 cluster_known_nodes] == 4 &&
+            [CI 3 cluster_known_nodes] == 4
+        } else {
+            fail "Cluster gossip hasn't propagated all node IDs"
+        }
+
         set newnode_r [valkey_client -3]
         set newnode_id [$newnode_r CLUSTER MYID]
 
