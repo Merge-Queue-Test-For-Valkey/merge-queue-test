@@ -1,6 +1,6 @@
 {
     "SCAN": {
-        "summary": "Iterates over the key names in the database.",
+        "summary": "Iterates over the key names in the database and optionally allows async delete.",
         "complexity": "O(1) for every call. O(N) for a complete iteration, including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection.",
         "group": "generic",
         "since": "2.8.0",
@@ -10,6 +10,10 @@
             [
                 "6.0.0",
                 "Added the `TYPE` subcommand."
+            ],
+            [
+                "9.0.0",
+                "Added the `UNLINK` subcommand for safe async deletion during scan."
             ]
         ],
         "command_flags": [
@@ -47,26 +51,37 @@
                 "type": "string",
                 "optional": true,
                 "since": "6.0.0"
+            },
+            {
+                "token": "UNLINK",
+                "name": "unlink",
+                "type": "pure-token",
+                "optional": true,
+                "since": "9.0.0"
             }
         ],
         "reply_schema": {
-            "description": "Cursor and scan response in array form.",
+            "description": "Cursor and scan response in array form. When UNLINK is used, returns cursor, deleted keys, and unlink count.",
             "type": "array",
             "minItems": 2,
-            "maxItems": 2,
+            "maxItems": 3,
             "items": [
                 {
                     "description": "Cursor.",
                     "type": "string"
                 },
                 {
-                    "description": "List of keys.",
+                    "description": "List of keys (or unlinked keys when UNLINK is used).",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 }
-            ]
+            ],
+            "additionalItems": {
+                "description": "Number of keys unlinked (only present when UNLINK option is used).",
+                "type": "integer"
+            }
         }
     }
 }

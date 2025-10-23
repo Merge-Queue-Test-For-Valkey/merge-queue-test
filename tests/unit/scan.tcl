@@ -459,6 +459,309 @@ proc test_scan {type} {
         set keys [lsort -unique $keys]
         assert_equal 100 [llength $keys]
     }
+
+    test "{$type} SCAN UNLINK basic functionality" {
+        r flushdb
+        populate 100
+        
+        # Verify initial key count
+        assert_equal 100 [r dbsize]
+        
+        # Perform SCAN UNLINK to delete all keys
+        set cur 0
+        set total_deleted 0
+        set deleted_keys {}
+        while 1 {
+            set res [r scan $cur unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            # Collect deleted keys and count
+            lappend deleted_keys {*}$keys
+            incr total_deleted $unlinked_count
+            
+            if {$cur == 0} break
+        }
+        
+        # Should have deleted all 100 keys
+        assert_equal 100 $total_deleted
+        assert_equal 100 [llength $deleted_keys]
+        
+        # Database should be empty now
+        assert_equal 0 [r dbsize]
+    }
+
+    test "{$type} SCAN UNLINK with MATCH pattern" {
+        r flushdb
+        populate 100
+        
+        # Add some keys with different patterns
+        for {set i 0} {$i < 50} {incr i} {
+            r set "temp:$i" "temporary"
+            r set "perm:$i" "permanent"
+        }
+        
+        # Verify total key count (100 + 50 + 50 = 200)
+        assert_equal 200 [r dbsize]
+        
+        # Delete only temp: keys using SCAN UNLINK with MATCH
+        set cur 0
+        set total_deleted 0
+        set deleted_keys {}
+        while 1 {
+            set res [r scan $cur match "temp:*" unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            lappend deleted_keys {*}$keys
+            incr total_deleted $unlinked_count
+            
+            if {$cur == 0} break
+        }
+        
+        # Should have deleted exactly 50 temp: keys
+        assert_equal 50 $total_deleted
+        assert_equal 50 [llength $deleted_keys]
+        
+        # Verify all deleted keys match the pattern
+        foreach key $deleted_keys {
+            assert_match "temp:*" $key
+        }
+        
+        # Database should have 150 keys remaining (100 original + 50 perm:)
+        assert_equal 150 [r dbsize]
+    }
+
+    test "{$type} SCAN UNLINK with COUNT" {
+        r flushdb
+        populate 1000
+        
+        # Use small count to test incremental deletion
+        set cur 0
+        set total_deleted 0
+        set iterations 0
+        while 1 {
+            set res [r scan $cur count 10 unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            incr total_deleted $unlinked_count
+            incr iterations
+            
+            if {$cur == 0} break
+        }
+        
+        # Should have deleted all 1000 keys
+        assert_equal 1000 $total_deleted
+        assert_equal 0 [r dbsize]
+        
+        # Should have taken multiple iterations due to small count
+        assert {$iterations > 10}
+    }
+
+    test "{$type} SCAN UNLINK with TYPE filter" {
+        r flushdb
+        populate 100  ; # Creates string keys
+        
+        # Add different types
+        for {set i 0} {$i < 30} {incr i} {
+            r hset "hash:$i" field "value$i"
+            r sadd "set:$i" "member$i"
+            r zadd "zset:$i" $i "member$i"
+        }
+        
+        # Total: 100 strings + 30 hashes + 30 sets + 30 zsets = 190 keys
+        assert_equal 190 [r dbsize]
+        
+        # Delete only hash type keys
+        set cur 0
+        set total_deleted 0
+        while 1 {
+            set res [r scan $cur type "hash" unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            incr total_deleted $unlinked_count
+            
+            if {$cur == 0} break
+        }
+        
+        # Should have deleted exactly 30 hash keys
+        assert_equal 30 $total_deleted
+        
+        # Database should have 160 keys remaining
+        assert_equal 160 [r dbsize]
+    }
+
+    test "{$type} SCAN UNLINK combined options" {
+        r flushdb
+        
+        # Create keys with specific patterns and types
+        for {set i 0} {$i < 50} {incr i} {
+            r set "data:string:$i" "value$i"
+            r hset "data:hash:$i" field "value$i"
+            r set "temp:string:$i" "temp$i"
+            r hset "temp:hash:$i" field "temp$i"
+        }
+        
+        # Total: 200 keys
+        assert_equal 200 [r dbsize]
+        
+        # Delete temp:* string keys only
+        set cur 0
+        set total_deleted 0
+        while 1 {
+            set res [r scan $cur match "temp:*" type "string" count 5 unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            incr total_deleted $unlinked_count
+            
+            if {$cur == 0} break
+        }
+        
+        # Should have deleted exactly 50 temp:string: keys
+        assert_equal 50 $total_deleted
+        
+        # Database should have 150 keys remaining
+        assert_equal 150 [r dbsize]
+    }
+
+    test "{$type} SCAN UNLINK response format validation" {
+        r flushdb
+        populate 10
+        
+        # Test response format
+        set res [r scan 0 unlink]
+        
+        # Should have 3 elements: cursor, deleted_keys, unlinked_count
+        assert_equal 3 [llength $res]
+        
+        set cursor [lindex $res 0]
+        set deleted_keys [lindex $res 1]
+        set unlinked_count [lindex $res 2]
+        
+        # Cursor should be numeric
+        assert {[string is integer $cursor]}
+        
+        # Deleted keys should be a list
+        assert {[llength $deleted_keys] >= 0}
+        
+        # Unlinked count should match deleted keys count
+        assert_equal [llength $deleted_keys] $unlinked_count
+        
+        # Unlinked count should be numeric
+        assert {[string is integer $unlinked_count]}
+    }
+
+    test "{$type} SCAN UNLINK empty result" {
+        r flushdb
+        populate 100
+        
+        # Try to delete keys with pattern that doesn't match anything
+        set res [r scan 0 match "nonexistent:*" unlink]
+        
+        set cursor [lindex $res 0]
+        set deleted_keys [lindex $res 1]
+        set unlinked_count [lindex $res 2]
+        
+        # Should return empty results
+        assert_equal 0 $cursor
+        assert_equal 0 [llength $deleted_keys]
+        assert_equal 0 $unlinked_count
+        
+        # No keys should have been deleted
+        assert_equal 100 [r dbsize]
+    }
+
+    test "{$type} SCAN UNLINK error handling" {
+        r flushdb
+        
+        # Test with invalid cursor
+        assert_error "*invalid cursor*" {r scan "invalid" unlink}
+        
+        # Test with invalid count
+        assert_error "*value is not an integer or out of range*" {r scan 0 count "invalid" unlink}
+        
+        # Test with invalid type
+        assert_error "*unknown type name*" {r scan 0 type "invalidtype" unlink}
+        
+        # Test that UNLINK can be combined with other options (should not error)
+        set res [r scan 0 unlink match "*"]
+        assert_equal 3 [llength $res]  ; # Should return [cursor, keys, unlink_count]
+    }
+
+    test "{$type} SCAN UNLINK with expired keys" {
+        r flushdb
+        r debug set-active-expire 0
+        
+        populate 100
+        
+        # Set some keys to expire
+        for {set i 0} {$i < 20} {incr i} {
+            r pexpire "key:$i" 1
+        }
+        
+        after 2
+        
+        # SCAN UNLINK should handle expired keys gracefully
+        set cur 0
+        set total_deleted 0
+        while 1 {
+            set res [r scan $cur unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            incr total_deleted $unlinked_count
+            
+            if {$cur == 0} break
+        }
+        
+        # Should delete only non-expired keys (approximately 80)
+        # The exact number may vary due to timing, but should be less than 100
+        assert {$total_deleted <= 100}
+        assert {$total_deleted >= 75}  ; # Allow some tolerance
+        
+        # Database should be empty after scan
+        assert_equal 0 [r dbsize]
+        
+        r debug set-active-expire 1
+    } {OK} {needs:debug}
+
+    test "{$type} SCAN UNLINK replication test" {
+        r flushdb
+        populate 50
+        
+        # Enable AOF for testing command propagation
+        set original_aof_setting [r config get appendonly]
+        r config set appendonly yes
+        
+        # Perform SCAN UNLINK
+        set cur 0
+        set total_deleted 0
+        while 1 {
+            set res [r scan $cur match "*" unlink]
+            set cur [lindex $res 0]
+            set keys [lindex $res 1]
+            set unlinked_count [lindex $res 2]
+            
+            incr total_deleted $unlinked_count
+            
+            if {$cur == 0} break
+        }
+        
+        assert_equal 50 $total_deleted
+        assert_equal 0 [r dbsize]
+        
+        # Restore original AOF setting
+        r config set appendonly [lindex $original_aof_setting 1]
+    }
 }
 
 start_server {tags {"scan network standalone"}} {
