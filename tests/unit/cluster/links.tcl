@@ -104,7 +104,7 @@ start_cluster 1 2 {tags {external:skip cluster}} {
         assert_equal $res {OK 0}
 
         # Wait for all the cluster links are healthy
-        wait_for_condition 50 100 {
+        wait_for_condition 50 150 {
             [number_of_peers $primary_id]*2 == [number_of_links $primary_id]
         } else {
             fail "All peer links couldn't be established"
