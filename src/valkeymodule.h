@@ -2031,6 +2031,9 @@ VALKEYMODULE_API ValkeyModuleUser *(*ValkeyModule_GetModuleUserFromUserName)(Val
 VALKEYMODULE_API int (*ValkeyModule_ACLCheckCommandPermissions)(ValkeyModuleUser *user,
                                                                 ValkeyModuleString **argv,
                                                                 int argc) VALKEYMODULE_ATTR;
+VALKEYMODULE_API int (*ValkeyModule_ACLCheckCommandPermissionsForCurrentUser)(ValkeyModuleCtx *ctx,
+                                                                              ValkeyModuleString **argv,
+                                                                              int argc) VALKEYMODULE_ATTR;
 VALKEYMODULE_API int (*ValkeyModule_ACLCheckKeyPermissions)(ValkeyModuleUser *user,
                                                             ValkeyModuleString *key,
                                                             int flags) VALKEYMODULE_ATTR;
@@ -2495,6 +2498,7 @@ static int ValkeyModule_Init(ValkeyModuleCtx *ctx, const char *name, int ver, in
     VALKEYMODULE_GET_API(GetCurrentUserName);
     VALKEYMODULE_GET_API(GetModuleUserFromUserName);
     VALKEYMODULE_GET_API(ACLCheckCommandPermissions);
+    VALKEYMODULE_GET_API(ACLCheckCommandPermissionsForCurrentUser);
     VALKEYMODULE_GET_API(ACLCheckKeyPermissions);
     VALKEYMODULE_GET_API(ACLCheckChannelPermissions);
     VALKEYMODULE_GET_API(ACLAddLogEntry);
