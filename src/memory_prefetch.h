@@ -9,4 +9,6 @@ int addCommandToBatchAndProcessIfFull(struct client *c);
 void removeClientFromPendingCommandsBatch(struct client *c);
 int onMaxBatchSizeChange(const char **err);
 
+void prefetchKeys(struct client *c, int first, int step, int count);
+
 #endif /* MEMORY_PREFETCH_H */
