@@ -266,12 +266,12 @@ static void activeDefragZsetNode(void *privdata, void *entry_ref) {
     zskiplistNode **node_ref = (zskiplistNode **)entry_ref;
     zskiplistNode *node = *node_ref;
 
-    /* defragment node internals */
-    sds newsds = activeDefragSds(node->ele);
-    if (newsds) node->ele = newsds;
+    size_t allocation_size;
+    zskiplistNode *newnode = activeDefragAllocWithoutFree(node, &allocation_size);
+    if (newnode == NULL) return;
 
     const double score = node->score;
-    const sds ele = node->ele;
+    const sds ele = zslGetNodeElement(node);
 
     /* find skiplist pointers that need to be updated if we end up moving the
      * skiplist node. */
@@ -283,7 +283,7 @@ static void activeDefragZsetNode(void *privdata, void *entry_ref) {
         zskiplistNode *next = x->level[i].forward;
         while (next &&
                (next->score < score ||
-                (next->score == score && sdscmp(next->ele, ele) < 0))) {
+                (next->score == score && sdscmp(zslGetNodeElement(next), ele) < 0))) {
             x = next;
             next = x->level[i].forward;
         }
@@ -292,12 +292,9 @@ static void activeDefragZsetNode(void *privdata, void *entry_ref) {
     /* should have arrived at intended node */
     serverAssert(x->level[0].forward == node);
 
-    /* try to defrag the skiplist record itself */
-    zskiplistNode *newnode = activeDefragAlloc(node);
-    if (newnode) {
-        zslUpdateNode(zsl, node, newnode, update);
-        *node_ref = newnode; /* update hashtable pointer */
-    }
+    zslUpdateNode(zsl, node, newnode, update);
+    *node_ref = newnode; /* update hashtable pointer */
+    allocatorDefragFree(node, allocation_size);
 }
 
 #define DEFRAG_SDS_DICT_NO_VAL 0
