@@ -1,0 +1,8 @@
+name: Merge Queue
+
+on:
+  merge_group:
+
+jobs:
+  call-daily-tests:
+    uses: ./.github/workflows/daily.yml
