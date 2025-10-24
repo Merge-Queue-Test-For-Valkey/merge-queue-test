@@ -1,0 +1,19 @@
+merge_method: squash
+merge_commit_message: PR_TITLE
+merge_commit_body: PR_BODY
+
+queue:
+  timeout_minutes: 1440
+  batch_size: 5
+  required_checks:
+    - "call-daily-tests"
+  auto_merge: true
+
+branch_protection:
+  required_status_checks:
+    - "call-daily-tests"
+  strict: false
+  enforce_admins: false
+  required_pull_request_reviews:
+    required_approving_review_count: 1
+    dismiss_stale_reviews: true
