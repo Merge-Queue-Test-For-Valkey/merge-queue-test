@@ -1049,10 +1049,19 @@ cleanup:
     return retval;
 }
 
+/* Save the cluster configuration file. If the save fails, exit the process. */
 void clusterSaveConfigOrDie(int do_fsync) {
     if (clusterSaveConfig(do_fsync) == C_ERR) {
         serverLog(LL_WARNING, "Fatal: can't update cluster config file.");
         exit(1);
+    }
+}
+
+/* Save the cluster configuration file. If the save fails, print the log. */
+void clusterSaveConfigOrLog(int do_fsync) {
+    if (clusterSaveConfig(do_fsync) == C_ERR) {
+        serverLog(LL_WARNING, "Cluster config file is applying a change even though "
+                              "it is unable to write to disk.");
     }
 }
 
@@ -1321,6 +1330,7 @@ void clusterInit(void) {
     server.cluster->currentEpoch = 0;
     server.cluster->state = CLUSTER_FAIL;
     server.cluster->fail_reason = CLUSTER_FAIL_NONE;
+    server.cluster->safe_to_join = 0;
     server.cluster->size = 0;
     server.cluster->todo_before_sleep = 0;
     server.cluster->nodes = dictCreate(&clusterNodesDictType);
@@ -5011,6 +5021,12 @@ void clusterSendFailoverAuthIfNeeded(clusterNode *node, clusterMsg *request) {
      * size + 1 */
     if (!clusterNodeIsVotingPrimary(myself)) return;
 
+    if (!server.cluster->safe_to_join) {
+        serverLog(LL_WARNING, "Failover auth denied to %.40s (%s): it is not safe to vote in this moment)",
+                  node->name, node->human_nodename);
+        return;
+    }
+
     /* Request epoch must be >= our currentEpoch.
      * Note that it is impossible for it to actually be greater since
      * our currentEpoch was updated as a side effect of receiving this
@@ -6021,7 +6037,7 @@ void clusterBeforeSleep(void) {
     /* Save the config, possibly using fsync. */
     if (flags & CLUSTER_TODO_SAVE_CONFIG) {
         int fsync = flags & CLUSTER_TODO_FSYNC_CONFIG;
-        clusterSaveConfigOrDie(fsync);
+        clusterSaveConfigOrLog(fsync);
     }
 
     if (flags & CLUSTER_TODO_BROADCAST_ALL) {
@@ -6265,8 +6281,12 @@ void clusterUpdateState(void) {
      * to not count the DB loading time. */
     if (first_call_time == 0) first_call_time = mstime();
     if (clusterNodeIsPrimary(myself) && server.cluster->state == CLUSTER_FAIL &&
-        mstime() - first_call_time < CLUSTER_WRITABLE_DELAY)
+        mstime() - first_call_time < CLUSTER_WRITABLE_DELAY) {
+        server.cluster->safe_to_join = 0;
         return;
+    } else {
+        server.cluster->safe_to_join = 1;
+    }
 
     /* Start assuming the state is OK. We'll turn it into FAIL if there
      * are the right conditions. */
