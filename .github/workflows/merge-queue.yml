@@ -9,4 +9,3 @@ jobs:
     with:
       skipjobs: "valgrind,macos"
       skiptests: ""
-      
