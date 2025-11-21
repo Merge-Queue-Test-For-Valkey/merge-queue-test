@@ -139,6 +139,8 @@ void ACLCleanupCategoriesOnFailure(size_t num_acl_categories_added) {
     nextCommandCategory -= num_acl_categories_added;
 }
 
+// Testing for Merge Queue
+
 struct ACLUserFlag {
     const char *name;
     uint64_t flag;
