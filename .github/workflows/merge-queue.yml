@@ -2,8 +2,11 @@ name: Merge Queue
 
 on:
   merge_group:
-  workflow_dispatch:
 
 jobs:
   call-daily-tests:
     uses: ./.github/workflows/daily.yml
+    with:
+      skipjobs: "valgrind,macos"
+      skiptests: ""
+      
