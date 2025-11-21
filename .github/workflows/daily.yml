@@ -58,7 +58,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'ubuntu')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'ubuntu')
     timeout-minutes: 1440
     steps:
       - name: prep
