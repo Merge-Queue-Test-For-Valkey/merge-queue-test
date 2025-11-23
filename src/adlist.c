@@ -146,7 +146,7 @@ void listLinkNodeTail(list *list, listNode *node) {
     }
     list->len++;
 }
-
+// Test
 list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
     listNode *node;
 
