@@ -48,7 +48,7 @@ on:
         default: ""
       use_repo:
         type: string
-        default: "valkey-io/valkey"
+        default: "Merge-Queue-Test-For-Valkey/merge-queue-test"
       use_git_ref:
         type: string
         default: "unstable"
