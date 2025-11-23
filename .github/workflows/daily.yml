@@ -61,6 +61,28 @@ permissions:
   contents: read
 
 jobs:
+  debug-merge-queue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug Event and Inputs
+        run: |
+          echo "=== Event Information ==="
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "github.repository: ${{ github.repository }}"
+          echo ""
+          echo "=== Inputs (workflow_call) ==="
+          echo "inputs.skipjobs: '${{ inputs.skipjobs }}'"
+          echo "inputs.skiptests: '${{ inputs.skiptests }}'"
+          echo "inputs.use_repo: '${{ inputs.use_repo }}'"
+          echo "inputs.use_git_ref: '${{ inputs.use_git_ref }}'"
+          echo ""
+          echo "=== Event Inputs (workflow_dispatch) ==="
+          echo "github.event.inputs.skipjobs: '${{ github.event.inputs.skipjobs }}'"
+          echo ""
+          echo "=== Condition Tests ==="
+          echo "Is workflow_call?: ${{ github.event_name == 'workflow_call' }}"
+          echo "Contains ubuntu in skipjobs?: ${{ contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'ubuntu') }}"
+          echo "NOT contains ubuntu?: ${{ !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'ubuntu') }}"
   test-ubuntu-jemalloc:
     runs-on: ubuntu-latest
     if: |
