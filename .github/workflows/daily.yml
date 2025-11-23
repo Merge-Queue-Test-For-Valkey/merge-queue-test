@@ -28,20 +28,30 @@ on:
         default: ""
       use_repo:
         description: "repo owner and name"
-        default: "valkey-io/valkey"
+        default: "Merge-Queue-Test-For-Valkey/merge-queue-test"
       use_git_ref:
         description: "git branch or sha to use"
         default: "unstable"
   workflow_call:
-    inputs:
-      skipjobs:
-        description: "jobs to skip"
-        type: string
-        default: ""
-      skiptests:
-        description: "tests to skip"
-        type: string
-        default: ""
+  inputs:
+    skipjobs:
+      type: string
+      default: ""
+    skiptests:
+      type: string
+      default: ""
+    test_args:
+      type: string
+      default: ""
+    cluster_test_args:
+      type: string
+      default: ""
+    use_repo:
+      type: string
+      default: "valkey-io/valkey"
+    use_git_ref:
+      type: string
+      default: "unstable"
 
 concurrency:
   group: daily-${{ github.head_ref || github.ref }}
@@ -64,12 +74,12 @@ jobs:
       - name: prep
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || 'Merge-Queue-Test-For-Valkey/merge-queue-test'}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || 'unstable'}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
