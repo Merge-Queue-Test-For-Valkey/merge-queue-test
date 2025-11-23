@@ -261,7 +261,7 @@ static int ACLStringHasSpaces(const char *s, size_t len) {
     }
     return 0;
 }
-
+// Test
 /* Given the category name the command returns the corresponding flag, or
  * zero if there is no match. */
 uint64_t ACLGetCommandCategoryFlagByName(const char *name) {
