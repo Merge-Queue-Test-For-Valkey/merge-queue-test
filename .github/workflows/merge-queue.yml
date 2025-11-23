@@ -9,3 +9,7 @@ jobs:
     with:
       skipjobs: "valgrind,macos"
       skiptests: ""
+      test_args: ""
+      cluster_test_args: ""
+      use_repo: "Merge-Queue-Test-For-Valkey/merge-queue-test"
+      use_git_ref: "unstable"
