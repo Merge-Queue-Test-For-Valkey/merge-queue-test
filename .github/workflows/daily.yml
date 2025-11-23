@@ -79,19 +79,19 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
       - name: install Redis OSS 6.2 server for compatibility testing
         run: |
@@ -127,7 +127,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      (!contains(github.event.inputs.skipjobs, 'ubuntu') || !contains(github.event.inputs.skipjobs, 'arm'))
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'ubuntu') && !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'arm')
     timeout-minutes: 14400
     steps:
       - name: prep
@@ -148,19 +148,19 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
 
   test-ubuntu-jemalloc-fortify:
@@ -170,7 +170,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'fortify')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'fortify')
     container: ubuntu:plucky
     timeout-minutes: 1440
     steps:
@@ -195,19 +195,19 @@ jobs:
       - name: testprep
         run: apt-get install -y tcl8.6 tclx procps
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
 
   test-ubuntu-libc-malloc:
@@ -217,7 +217,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'malloc')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'malloc')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -238,16 +238,16 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   test-ubuntu-no-malloc-usable-size:
@@ -257,7 +257,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'malloc')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'malloc')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -278,16 +278,16 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   test-ubuntu-32bit:
@@ -297,7 +297,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, '32bit')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', '32bit')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -320,21 +320,21 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
           make -C tests/modules 32bit # the script below doesn't have an argument, we must build manually ahead of time
           CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
 
   test-ubuntu-tls:
@@ -344,7 +344,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'tls')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -368,19 +368,19 @@ jobs:
           sudo apt-get install tcl8.6 tclx tcl-tls
           ./utils/gen-test-certs.sh
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
           ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs --tls --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
           CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --tls --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
           ./runtest-sentinel --tls ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
           ./runtest-cluster --tls ${{github.event.inputs.cluster_test_args}}
 
@@ -391,7 +391,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'tls')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -415,19 +415,19 @@ jobs:
           sudo apt-get install tcl8.6 tclx tcl-tls
           ./utils/gen-test-certs.sh
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
           ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
           CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
           ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
           ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
@@ -438,7 +438,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'iothreads')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'iothreads')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -460,10 +460,10 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --io-threads --accurate --verbose --tags network --dump-logs ${{github.event.inputs.test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster --io-threads ${{github.event.inputs.cluster_test_args}}
 
   test-ubuntu-tls-io-threads:
@@ -473,7 +473,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'tls') && !contains(github.event.inputs.skipjobs, 'iothreads')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls') && !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'iothreads')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -497,11 +497,11 @@ jobs:
           sudo apt-get install tcl8.6 tclx tcl-tls
           ./utils/gen-test-certs.sh
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
           ./runtest --io-threads --tls --accurate --verbose --tags network --dump-logs ${{github.event.inputs.test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
           ./runtest-cluster --io-threads --tls ${{github.event.inputs.cluster_test_args}}
 
@@ -512,7 +512,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'specific')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'specific')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -589,7 +589,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'valgrind') && !contains(github.event.inputs.skiptests, 'valkey')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -612,7 +612,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
 
   test-valgrind-misc:
@@ -622,7 +622,8 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'valgrind') && !(contains(github.event.inputs.skiptests, 'modules') && contains(github.event.inputs.skiptests, 'unittest'))
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !(contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest'))
+
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -645,10 +646,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: |
           valgrind --track-origins=yes --suppressions=./src/valgrind.sup --show-reachable=no --show-possibly-lost=no --leak-check=full --log-file=err.txt ./src/valkey-unit-tests --valgrind
           if grep -q 0x err.txt; then cat err.txt; exit 1; fi
@@ -660,7 +661,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'valgrind') && !contains(github.event.inputs.skiptests, 'valkey')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -683,7 +684,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
 
   test-valgrind-no-malloc-usable-size-misc:
@@ -693,7 +694,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'valgrind') && !(contains(github.event.inputs.skiptests, 'modules') && contains(github.event.inputs.skiptests, 'unittest'))
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !(contains(github.event.inputs.skiptests, 'modules') && contains(github.event.inputs.skiptests, 'unittest'))
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -716,10 +717,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: |
           valgrind --track-origins=yes --suppressions=./src/valgrind.sup --show-reachable=no --show-possibly-lost=no --leak-check=full --log-file=err.txt ./src/valkey-unit-tests --valgrind
           if grep -q 0x err.txt; then cat err.txt; exit 1; fi
@@ -731,7 +732,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'sanitizer')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'sanitizer')
     timeout-minutes: 1440
     strategy:
       fail-fast: false
@@ -760,25 +761,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx -y
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --large-memory
       - name: large memory tests
-        if: true && !contains(github.event.inputs.skiptests, 'valkey') && !contains(github.event.inputs.skiptests, 'large-memory')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
         run: ./runtest --accurate --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
       - name: large memory module api tests
-        if: true && !contains(github.event.inputs.skiptests, 'modules') && !contains(github.event.inputs.skiptests, 'large-memory')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
 
   test-sanitizer-undefined:
@@ -788,7 +789,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'sanitizer')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'sanitizer')
     timeout-minutes: 1440
     strategy:
       fail-fast: false
@@ -817,25 +818,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx -y
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate --large-memory
       - name: large memory tests
-        if: true && !contains(github.event.inputs.skiptests, 'valkey') && !contains(github.event.inputs.skiptests, 'large-memory')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
         run: ./runtest --accurate --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
       - name: large memory module api tests
-        if: true && !contains(github.event.inputs.skiptests, 'modules') && !contains(github.event.inputs.skiptests, 'large-memory')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
 
   test-sanitizer-force-defrag:
@@ -845,7 +846,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'sanitizer')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'sanitizer')
     timeout-minutes: 1440
     strategy:
       fail-fast: false
@@ -870,19 +871,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install tcl8.6 tclx -y
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
       - name: unittest
-        if: true && !contains(github.event.inputs.skiptests, 'unittest')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests
 
   test-ubuntu-lttng:
@@ -892,7 +893,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'lttng')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'lttng')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -915,16 +916,16 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   test-rpm-distros-jemalloc:
@@ -933,7 +934,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'rpm-distros')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'rpm-distros')
     strategy:
       fail-fast: false
       matrix:
@@ -982,16 +983,16 @@ jobs:
       - name: testprep
         run: dnf -y install tcl tcltls
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   test-rpm-distros-tls-module:
@@ -1000,7 +1001,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'tls')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
     strategy:
       fail-fast: false
       matrix:
@@ -1051,19 +1052,19 @@ jobs:
           dnf -y install tcl tcltls
           ./utils/gen-test-certs.sh
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
           ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs --tls-module --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
           CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --tls-module --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
           ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
           ./runtest-cluster --tls-module ${{github.event.inputs.cluster_test_args}}
 
@@ -1073,7 +1074,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(github.event.inputs.skipjobs, 'tls')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
     strategy:
       fail-fast: false
       matrix:
@@ -1124,19 +1125,19 @@ jobs:
           dnf -y install tcl tcltls
           ./utils/gen-test-certs.sh
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
           ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
           CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
           ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
           ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
@@ -1147,7 +1148,8 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'macos') && !(contains(github.event.inputs.skiptests, 'valkey') && contains(github.event.inputs.skiptests, 'modules'))
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos') && !(contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules'))
+
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -1166,10 +1168,10 @@ jobs:
       - name: make
         run: make SERVER_CFLAGS='-Werror'
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --clients 1 --no-latency --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --clients 1 --no-latency --dump-logs ${{github.event.inputs.test_args}}
 
   test-macos-latest-sentinel:
@@ -1179,7 +1181,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'macos') && !contains(github.event.inputs.skiptests, 'sentinel')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -1198,7 +1200,7 @@ jobs:
       - name: make
         run: make SERVER_CFLAGS='-Werror'
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
 
   test-macos-latest-cluster:
@@ -1208,7 +1210,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'macos') && !contains(github.event.inputs.skiptests, 'cluster')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -1227,7 +1229,7 @@ jobs:
       - name: make
         run: make SERVER_CFLAGS='-Werror'
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   build-old-macos-versions:
@@ -1241,7 +1243,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'macos')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos')
     timeout-minutes: 1440
     steps:
       - uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
@@ -1270,7 +1272,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'freebsd')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'freebsd')
     timeout-minutes: 1440
     steps:
       - name: prep
@@ -1301,7 +1303,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'alpine')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'alpine')
     container: alpine:latest
     steps:
       - name: prep
@@ -1324,16 +1326,16 @@ jobs:
       - name: testprep
         run: apk add tcl procps tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   test-alpine-libc-malloc:
@@ -1343,7 +1345,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'alpine')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'alpine')
     container: alpine:latest
     steps:
       - name: prep
@@ -1366,16 +1368,16 @@ jobs:
       - name: testprep
         run: apk add tcl procps tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
 
   reply-schemas-validator:
@@ -1386,7 +1388,7 @@ jobs:
         github.event_name == 'workflow_call' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
-      !contains(github.event.inputs.skipjobs, 'reply-schema')
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'reply-schema')
     steps:
       - name: prep
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
@@ -1406,23 +1408,24 @@ jobs:
       - name: testprep
         run: sudo apt-get install tcl8.6 tclx
       - name: test
-        if: true && !contains(github.event.inputs.skiptests, 'valkey')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: ./runtest --log-req-res --no-latency --dont-clean --force-resp3 --tags -slow --verbose --dump-logs  ${{github.event.inputs.test_args}}
       - name: module api test
-        if: true && !contains(github.event.inputs.skiptests, 'modules')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: CFLAGS='-Werror' ./runtest-moduleapi --log-req-res --no-latency --dont-clean --force-resp3 --dont-pre-clean --verbose --dump-logs ${{github.event.inputs.test_args}}
       - name: sentinel tests
-        if: true && !contains(github.event.inputs.skiptests, 'sentinel')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: ./runtest-sentinel --log-req-res --dont-clean --force-resp3 ${{github.event.inputs.cluster_test_args}}
       - name: cluster tests
-        if: true && !contains(github.event.inputs.skiptests, 'cluster')
+        if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: ./runtest-cluster --log-req-res --dont-clean --force-resp3 ${{github.event.inputs.cluster_test_args}}
       - name: Install Python dependencies
         uses: py-actions/py-dependency-install@30aa0023464ed4b5b116bd9fbdab87acf01a484e # v4.1.0
         with:
           path: "./utils/req-res-validator/requirements.txt"
       - name: validator
-        run: ./utils/req-res-log-validator.py --verbose --fail-missing-reply-schemas ${{ (!contains(github.event.inputs.skiptests, 'valkey') && !contains(github.event.inputs.skiptests, 'module') && !contains(github.event.inputs.sentinel, 'valkey') && !contains(github.event.inputs.skiptests, 'cluster')) && github.event.inputs.test_args == '' && github.event.inputs.cluster_test_args == '' && '--fail-commands-not-all-hit' || '' }}
+        run: ./utils/req-res-log-validator.py --verbose --fail-missing-reply-schemas ${{ (!contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'module') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel') 
+          && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')) && (inputs.test_args || github.event.inputs.test_args || '') == '' && (inputs.cluster_test_args || github.event.inputs.cluster_test_args || '') == '' && '--fail-commands-not-all-hit' || '' }}
 
   notify-about-job-results:
     runs-on: ubuntu-latest
