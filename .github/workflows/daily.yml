@@ -33,25 +33,25 @@ on:
         description: "git branch or sha to use"
         default: "unstable"
   workflow_call:
-  inputs:
-    skipjobs:
-      type: string
-      default: ""
-    skiptests:
-      type: string
-      default: ""
-    test_args:
-      type: string
-      default: ""
-    cluster_test_args:
-      type: string
-      default: ""
-    use_repo:
-      type: string
-      default: "valkey-io/valkey"
-    use_git_ref:
-      type: string
-      default: "unstable"
+    inputs:
+      skipjobs:
+        type: string
+        default: ""
+      skiptests:
+        type: string
+        default: ""
+      test_args:
+        type: string
+        default: ""
+      cluster_test_args:
+        type: string
+        default: ""
+      use_repo:
+        type: string
+        default: "valkey-io/valkey"
+      use_git_ref:
+        type: string
+        default: "unstable"
 
 concurrency:
   group: daily-${{ github.head_ref || github.ref }}
