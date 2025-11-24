@@ -28,7 +28,7 @@ on:
         default: ""
       use_repo:
         description: "repo owner and name"
-        default: "Merge-Queue-Test-For-Valkey/merge-queue-test"
+        default: "valkey-io/valkey"
       use_git_ref:
         description: "git branch or sha to use"
         default: "unstable"
@@ -97,8 +97,8 @@ jobs:
       - name: prep
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || 'Merge-Queue-Test-For-Valkey/merge-queue-test'}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || 'unstable'}}" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref}}" >> $GITHUB_ENV
           echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
           echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
           echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
