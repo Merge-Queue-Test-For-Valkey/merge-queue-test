@@ -88,13 +88,14 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'ubuntu')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
           echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || 'Merge-Queue-Test-For-Valkey/merge-queue-test'}}" >> $GITHUB_ENV
           echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || 'unstable'}}" >> $GITHUB_ENV
@@ -112,16 +113,16 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
@@ -157,20 +158,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'ubuntu') && !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'arm')
     timeout-minutes: 14400
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -181,16 +183,16 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
@@ -200,6 +202,7 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'fortify')
@@ -207,14 +210,14 @@ jobs:
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -228,16 +231,16 @@ jobs:
         run: apt-get install -y tcl8.6 tclx procps
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
@@ -247,20 +250,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'malloc')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -271,36 +275,37 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-ubuntu-no-malloc-usable-size:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'malloc')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -311,36 +316,37 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-ubuntu-32bit:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', '32bit')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -353,18 +359,18 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
           make -C tests/modules 32bit # the script below doesn't have an argument, we must build manually ahead of time
-          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate
@@ -374,20 +380,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -402,39 +409,40 @@ jobs:
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
-          ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs --tls --dump-logs ${{github.event.inputs.test_args}}
+          ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs --tls --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
-          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --tls --dump-logs ${{github.event.inputs.test_args}}
+          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --tls --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
-          ./runtest-sentinel --tls ${{github.event.inputs.cluster_test_args}}
+          ./runtest-sentinel --tls ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
-          ./runtest-cluster --tls ${{github.event.inputs.cluster_test_args}}
+          ./runtest-cluster --tls ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-ubuntu-tls-no-tls:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -449,39 +457,40 @@ jobs:
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
-          ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+          ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
-          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
-          ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+          ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
-          ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+          ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-ubuntu-io-threads:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'iothreads')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -493,30 +502,31 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --io-threads --accurate --verbose --tags network --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest --io-threads --accurate --verbose --tags network --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster --io-threads ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster --io-threads ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-ubuntu-tls-io-threads:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls') && !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'iothreads')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -531,31 +541,32 @@ jobs:
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
-          ./runtest --io-threads --tls --accurate --verbose --tags network --dump-logs ${{github.event.inputs.test_args}}
+          ./runtest --io-threads --tls --accurate --verbose --tags network --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
-          ./runtest-cluster --io-threads --tls ${{github.event.inputs.cluster_test_args}}
+          ./runtest-cluster --io-threads --tls ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-ubuntu-reclaim-cache:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'specific')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -619,20 +630,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -645,13 +657,14 @@ jobs:
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
 
   test-valgrind-misc:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !(contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest'))
@@ -659,14 +672,14 @@ jobs:
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -679,7 +692,7 @@ jobs:
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: |
@@ -691,20 +704,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -717,27 +731,28 @@ jobs:
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
 
   test-valgrind-no-malloc-usable-size-misc:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
-      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !(contains(github.event.inputs.skiptests, 'modules') && contains(github.event.inputs.skiptests, 'unittest'))
+      !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'valgrind') && !(contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest'))
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -750,7 +765,7 @@ jobs:
           sudo apt-get install tcl8.6 tclx valgrind -y
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --valgrind --no-latency --verbose --clients 1 --timeout 2400 --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: |
@@ -762,6 +777,7 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'sanitizer')
@@ -774,14 +790,14 @@ jobs:
       CC: ${{ matrix.compiler }}
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -794,31 +810,32 @@ jobs:
           sudo apt-get install tcl8.6 tclx -y
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest --accurate --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --large-memory
       - name: large memory tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
-        run: ./runtest --accurate --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
+        run: ./runtest --accurate --verbose --dump-logs --large-memory --tags large-memory ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: large memory module api tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --large-memory --tags large-memory ${{inputs.test_args || github.event.inputs.test_args || ''}}
 
   test-sanitizer-undefined:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'sanitizer')
@@ -831,14 +848,14 @@ jobs:
       CC: ${{ matrix.compiler }}
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -851,31 +868,32 @@ jobs:
           sudo apt-get install tcl8.6 tclx -y
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest --accurate --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests --accurate --large-memory
       - name: large memory tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
-        run: ./runtest --accurate --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
+        run: ./runtest --accurate --verbose --dump-logs --large-memory --tags large-memory ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: large memory module api tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'large-memory')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --large-memory --tags large-memory ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --large-memory --tags large-memory ${{inputs.test_args || github.event.inputs.test_args || ''}}
 
   test-sanitizer-force-defrag:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'sanitizer')
@@ -884,14 +902,14 @@ jobs:
       fail-fast: false
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -904,16 +922,16 @@ jobs:
           sudo apt-get install tcl8.6 tclx -y
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest --accurate --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: unittest
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'unittest')
         run: ./src/valkey-unit-tests
@@ -923,20 +941,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'lttng')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -949,21 +968,22 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-rpm-distros-jemalloc:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'rpm-distros')
@@ -993,14 +1013,14 @@ jobs:
 
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1016,21 +1036,22 @@ jobs:
         run: dnf -y install tcl tcltls
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-rpm-distros-tls-module:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
@@ -1060,14 +1081,14 @@ jobs:
 
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1086,24 +1107,25 @@ jobs:
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
-          ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs --tls-module --dump-logs ${{github.event.inputs.test_args}}
+          ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs --tls-module --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
-          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --tls-module --dump-logs ${{github.event.inputs.test_args}}
+          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs --tls-module --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
-          ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+          ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
-          ./runtest-cluster --tls-module ${{github.event.inputs.cluster_test_args}}
+          ./runtest-cluster --tls-module ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-rpm-distros-tls-module-no-tls:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'unstable')) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'tls')
@@ -1133,14 +1155,14 @@ jobs:
 
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1159,25 +1181,26 @@ jobs:
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
         run: |
-          ./runtest --accurate --verbose --dump-logs ${{github.event.inputs.test_args}}
+          ./runtest --accurate --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
         run: |
-          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+          CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
         run: |
-          ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+          ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
         run: |
-          ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+          ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-macos-latest:
     runs-on: macos-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos') && !(contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey') && contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules'))
@@ -1185,14 +1208,14 @@ jobs:
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1201,30 +1224,31 @@ jobs:
         run: make SERVER_CFLAGS='-Werror'
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --clients 1 --no-latency --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --clients 1 --no-latency --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --clients 1 --no-latency --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --clients 1 --no-latency --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
 
   test-macos-latest-sentinel:
     runs-on: macos-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1233,27 +1257,28 @@ jobs:
         run: make SERVER_CFLAGS='-Werror'
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-macos-latest-cluster:
     runs-on: macos-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos') && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1262,7 +1287,7 @@ jobs:
         run: make SERVER_CFLAGS='-Werror'
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   build-old-macos-versions:
     strategy:
@@ -1273,6 +1298,7 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'macos')
@@ -1282,14 +1308,14 @@ jobs:
         with:
           xcode-version: latest
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1302,16 +1328,17 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'freebsd')
     timeout-minutes: 1440
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1333,20 +1360,21 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'alpine')
     container: alpine:latest
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1359,36 +1387,37 @@ jobs:
         run: apk add tcl procps tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   test-alpine-libc-malloc:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'alpine')
     container: alpine:latest
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1401,16 +1430,16 @@ jobs:
         run: apk add tcl procps tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: ./runtest ${{ github.event_name != 'pull_request' && '--accurate' || '' }} --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
 
   reply-schemas-validator:
     runs-on: ubuntu-latest
@@ -1418,19 +1447,20 @@ jobs:
     if: |
       (github.event_name == 'workflow_dispatch' ||
         github.event_name == 'workflow_call' ||
+        github.event_name == 'merge_group' ||
         (github.event_name == 'schedule' && github.repository == 'valkey-io/valkey') ||
         (github.event_name == 'pull_request' && (contains(github.event.pull_request.labels.*.name, 'run-extra-tests') || github.event.pull_request.base.ref != 'unstable'))) &&
       !contains(inputs.skipjobs || github.event.inputs.skipjobs || '', 'reply-schema')
     steps:
       - name: prep
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'merge_group'
         run: |
-          echo "GITHUB_REPOSITORY=${{github.event.inputs.use_repo}}" >> $GITHUB_ENV
-          echo "GITHUB_HEAD_REF=${{github.event.inputs.use_git_ref}}" >> $GITHUB_ENV
-          echo "skipjobs: ${{github.event.inputs.skipjobs}}"
-          echo "skiptests: ${{github.event.inputs.skiptests}}"
-          echo "test_args: ${{github.event.inputs.test_args}}"
-          echo "cluster_test_args: ${{github.event.inputs.cluster_test_args}}"
+          echo "GITHUB_REPOSITORY=${{inputs.use_repo || github.event.inputs.use_repo || github.repository}}" >> $GITHUB_ENV
+          echo "GITHUB_HEAD_REF=${{inputs.use_git_ref || github.event.inputs.use_git_ref || github.head_ref || github.ref}}" >> $GITHUB_ENV
+          echo "skipjobs: ${{inputs.skipjobs || github.event.inputs.skipjobs || ''}}"
+          echo "skiptests: ${{inputs.skiptests || github.event.inputs.skiptests || ''}}"
+          echo "test_args: ${{inputs.test_args || github.event.inputs.test_args || ''}}"
+          echo "cluster_test_args: ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}"
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           repository: ${{ env.GITHUB_REPOSITORY }}
@@ -1441,16 +1471,16 @@ jobs:
         run: sudo apt-get install tcl8.6 tclx
       - name: test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'valkey')
-        run: ./runtest --log-req-res --no-latency --dont-clean --force-resp3 --tags -slow --verbose --dump-logs  ${{github.event.inputs.test_args}}
+        run: ./runtest --log-req-res --no-latency --dont-clean --force-resp3 --tags -slow --verbose --dump-logs  ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: module api test
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'modules')
-        run: CFLAGS='-Werror' ./runtest-moduleapi --log-req-res --no-latency --dont-clean --force-resp3 --dont-pre-clean --verbose --dump-logs ${{github.event.inputs.test_args}}
+        run: CFLAGS='-Werror' ./runtest-moduleapi --log-req-res --no-latency --dont-clean --force-resp3 --dont-pre-clean --verbose --dump-logs ${{inputs.test_args || github.event.inputs.test_args || ''}}
       - name: sentinel tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'sentinel')
-        run: ./runtest-sentinel --log-req-res --dont-clean --force-resp3 ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-sentinel --log-req-res --dont-clean --force-resp3 ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: cluster tests
         if: true && !contains(inputs.skiptests || github.event.inputs.skiptests || '', 'cluster')
-        run: ./runtest-cluster --log-req-res --dont-clean --force-resp3 ${{github.event.inputs.cluster_test_args}}
+        run: ./runtest-cluster --log-req-res --dont-clean --force-resp3 ${{inputs.cluster_test_args || github.event.inputs.cluster_test_args || ''}}
       - name: Install Python dependencies
         uses: py-actions/py-dependency-install@30aa0023464ed4b5b116bd9fbdab87acf01a484e # v4.1.0
         with:
