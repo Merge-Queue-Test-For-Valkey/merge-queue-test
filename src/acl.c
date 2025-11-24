@@ -226,7 +226,7 @@ static sds ACLHashPassword(unsigned char *cleartext, size_t len) {
     }
     return sdsnewlen(hex, HASH_PASSWORD_LEN);
 }
-
+// Test
 /* Given a hash and the hash length, returns C_OK if it is a valid password
  * hash, or C_ERR otherwise. */
 static int ACLCheckPasswordHash(unsigned char *hash, int hashlen) {
