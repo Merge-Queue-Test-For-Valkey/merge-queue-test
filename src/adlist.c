@@ -91,6 +91,7 @@ void listReleaseVoid(void *l) {
  * On error, NULL is returned and no operation is performed (i.e. the
  * list remains unaltered).
  * On success the 'list' pointer you pass to the function is returned. */
+// Test
 list *listAddNodeHead(list *list, void *value) {
     listNode *node;
 
