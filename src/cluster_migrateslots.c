@@ -304,7 +304,7 @@ list *parseSlotRangesOrReply(client *c,
                 goto cleanup;
             }
         }
-
+        // Test
         slotRange *new_range = zmalloc(sizeof(slotRange));
         new_range->start_slot = startslot;
         new_range->end_slot = endslot;
